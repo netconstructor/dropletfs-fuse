@@ -6,6 +6,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <pthread.h>
+#include <semaphore.h>
 
 #include "cachedir.h"
 #include "tmpstr.h"
@@ -16,12 +17,12 @@
 #include "file.h"
 #include "list.h"
 
-#define MAX_CHILDREN 10
+#define MAX_CHILDREN 30
 
 extern struct conf *conf;
 extern dpl_ctx_t *ctx;
 extern GHashTable *hash;
-GThreadPool *pool;
+sem_t children;
 
 static void
 cb_map_dirents(void *elem, void *cb_arg)
@@ -148,8 +149,6 @@ cachedir_callback(gpointer key,
         time_t age;
         int total_size;
 
-        LOG(LOG_DEBUG, "Entering function");
-
         path = key;
         pe = value;
         hash = user_data;
@@ -171,11 +170,107 @@ cachedir_callback(gpointer key,
         return;
 }
 
+static void *
+cb_get_md(void *cb_arg)
+{
+        char *name = cb_arg;
+        int c;
+        struct stat stbuf;
+
+        LOG(LOG_DEBUG, "starting a new thread for rootdir md update");
+
+  retry:
+        sem_getvalue(&children, &c);
+        while (c > MAX_CHILDREN) {
+                usleep(10*1000); /* wait 10ms */
+                goto retry;
+        }
+
+        if (-1 == sem_post(&children)) {
+                LOG(LOG_INFO, "path=%s, sem_post: %s", name, strerror(errno));
+                goto end;
+        }
+
+        memset(&stbuf, 0, sizeof stbuf);
+        (void)dfs_getattr(name, &stbuf);
+
+        if (-1 == sem_wait(&children)) {
+                LOG(LOG_INFO, "path=%s, sem_wait: %s", name, strerror(errno));
+                goto end;
+        }
+
+  end:
+        return NULL;
+}
+
+static void
+root_dir_preload(GHashTable *hash)
+{
+        char *root_dir = "/";
+        void *dir_hdl = NULL;
+        dpl_dirent_t dirent;
+        dpl_status_t rc = DPL_FAILURE;
+        pentry_t *pe = NULL;
+        char *direntname = NULL;
+        char *key = NULL;
+        struct stat st;
+        pthread_t get_md;
+        pthread_attr_t get_md_attr;
+
+        if (-1 == sem_init(&children, 0, 0)) {
+                LOG(LOG_INFO, "sem_init: %s", strerror(errno));
+                goto err;
+        }
+
+        pe = g_hash_table_lookup(hash, root_dir);
+        if (! pe) {
+                pe = pentry_new();
+                if (! pe) {
+                        LOG(LOG_ERR, "%s: can't add a new cell", root_dir);
+                        goto err;
+                }
+                pentry_set_path(pe, root_dir);
+                key = strdup(root_dir);
+                if (! key) {
+                        LOG(LOG_ERR, "%s: strdup: %s",
+                            root_dir, strerror(errno));
+                        pentry_free(pe);
+                        goto err;
+                }
+                g_hash_table_insert(hash, key, pe);
+        }
+
+        rc = dfs_chdir_timeout(ctx, root_dir);
+        if (DPL_SUCCESS != rc) {
+                LOG(LOG_ERR, "dfs_chdir_timeout: %s", dpl_status_str(rc));
+                goto err;
+        }
+
+        rc = dfs_opendir_timeout(ctx, ".", &dir_hdl);
+        if (DPL_SUCCESS != rc) {
+                LOG(LOG_ERR, "dfs_opendir_timeout: %s", dpl_status_str(rc));
+                goto err;
+        }
+
+        while (DPL_SUCCESS == dpl_readdir(dir_hdl, &dirent)) {
+                direntname = tmpstr_printf("%s%s", root_dir, dirent.name);
+                memset(&st, 0, sizeof st);
+                pthread_attr_init(&get_md_attr);
+                pthread_attr_setdetachstate(&get_md_attr, PTHREAD_CREATE_DETACHED);
+                pthread_create(&get_md, &get_md_attr, cb_get_md, direntname);
+        }
+
+        pentry_set_atime(pe);
+  err:
+        if (dir_hdl)
+                dpl_closedir(dir_hdl);
+}
+
 void *
 thread_cachedir(void *cb_arg)
 {
         GHashTable *hash = cb_arg;
-        GError *err = NULL;
+        int n_children;
 
         LOG(LOG_DEBUG, "entering thread");
 
@@ -188,10 +283,19 @@ thread_cachedir(void *cb_arg)
                 goto err;
         }
 
+  retry:
+        if (-1 == sem_getvalue(&children, &n_children))
+                LOG(LOG_INFO, "sem_getvalue: %s", strerror(errno));
+
+        if (n_children) {
+                usleep(10 * 1000); /* wait 10ms*/
+                goto retry;
+        }
+
         while (1) {
                 LOG(LOG_DEBUG, "updating cache directories");
-                g_hash_table_foreach(hash, cachedir_callback, hash);
                 sleep(conf->sc_loop_delay);
+                g_hash_table_foreach(hash, cachedir_callback, hash);
         }
 
   err:
