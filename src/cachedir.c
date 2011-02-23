@@ -22,7 +22,8 @@
 extern struct conf *conf;
 extern dpl_ctx_t *ctx;
 extern GHashTable *hash;
-sem_t children;
+
+GThreadPool *pool;
 
 static void
 cb_map_dirents(void *elem, void *cb_arg)
@@ -103,8 +104,9 @@ update_md(gpointer data,
         rc = dfs_namei_timeout(ctx, path, ctx->cur_bucket,
                                ino, NULL, NULL, &type);
 
-        LOG(LOG_DEBUG, "path=%s, dpl_namei: %s, type=%s",
-            path, dpl_status_str(rc), ftype_to_str(type));
+        LOG(LOG_DEBUG, "path=%s, dpl_namei: %s, type=%s, parent=%s, obj=%s",
+            path, dpl_status_str(rc), ftype_to_str(type),
+            parent_ino.key, obj_ino.key);
 
         if (DPL_SUCCESS != rc) {
                 LOG(LOG_NOTICE, "dfs_namei_timeout: %s", dpl_status_str(rc));
@@ -170,41 +172,22 @@ cachedir_callback(gpointer key,
         return;
 }
 
-static void *
-cb_get_md(void *cb_arg)
+static void
+cb_get_md(gpointer data,
+          gpointer user_data)
 {
-        char *name = cb_arg;
-        int c;
+        const char *path = data;
         struct stat stbuf;
 
         LOG(LOG_DEBUG, "starting a new thread for rootdir md update");
 
-  retry:
-        sem_getvalue(&children, &c);
-        while (c > MAX_CHILDREN) {
-                usleep(10*1000); /* wait 10ms */
-                goto retry;
-        }
-
-        if (-1 == sem_post(&children)) {
-                LOG(LOG_INFO, "path=%s, sem_post: %s", name, strerror(errno));
-                goto end;
-        }
-
         memset(&stbuf, 0, sizeof stbuf);
-        (void)dfs_getattr(name, &stbuf);
-
-        if (-1 == sem_wait(&children)) {
-                LOG(LOG_INFO, "path=%s, sem_wait: %s", name, strerror(errno));
-                goto end;
-        }
-
-  end:
-        return NULL;
+        (void)dfs_getattr(path, &stbuf);
 }
 
 static void
-root_dir_preload(GHashTable *hash)
+root_dir_preload(GThreadPool *pool,
+                 GHashTable *hash)
 {
         char *root_dir = "/";
         void *dir_hdl = NULL;
@@ -214,13 +197,6 @@ root_dir_preload(GHashTable *hash)
         char *direntname = NULL;
         char *key = NULL;
         struct stat st;
-        pthread_t get_md;
-        pthread_attr_t get_md_attr;
-
-        if (-1 == sem_init(&children, 0, 0)) {
-                LOG(LOG_INFO, "sem_init: %s", strerror(errno));
-                goto err;
-        }
 
         pe = g_hash_table_lookup(hash, root_dir);
         if (! pe) {
@@ -255,9 +231,11 @@ root_dir_preload(GHashTable *hash)
         while (DPL_SUCCESS == dpl_readdir(dir_hdl, &dirent)) {
                 direntname = tmpstr_printf("%s%s", root_dir, dirent.name);
                 memset(&st, 0, sizeof st);
-                pthread_attr_init(&get_md_attr);
-                pthread_attr_setdetachstate(&get_md_attr, PTHREAD_CREATE_DETACHED);
-                pthread_create(&get_md, &get_md_attr, cb_get_md, direntname);
+                g_thread_pool_push(pool, direntname, NULL);
+                if (err) {
+                        LOG(LOG_ERR, "pushing a thread: %s", err->message);
+                        g_error_free(err);
+                }
         }
 
         pentry_set_atime(pe);
@@ -277,20 +255,8 @@ thread_cachedir(void *cb_arg)
         if (! conf->sc_loop_delay || ! conf->sc_age_threshold)
                 return NULL;
 
-        pool = g_thread_pool_new(update_md, NULL, 50, FALSE, &err);
-        if (err) {
-                LOG(LOG_ERR, "can't init thread pool: %s", err->message);
-                goto err;
-        }
-
-  retry:
-        if (-1 == sem_getvalue(&children, &n_children))
-                LOG(LOG_INFO, "sem_getvalue: %s", strerror(errno));
-
-        if (n_children) {
-                usleep(10 * 1000); /* wait 10ms*/
-                goto retry;
-        }
+        pool = g_thread_pool_new(cb_get_md, NULL, 50, FALSE, NULL);
+        root_dir_preload(pool, hash);
 
         while (1) {
                 LOG(LOG_DEBUG, "updating cache directories");
@@ -298,6 +264,9 @@ thread_cachedir(void *cb_arg)
                 g_hash_table_foreach(hash, cachedir_callback, hash);
         }
 
-  err:
+  end:
+        if (pool)
+                g_thread_pool_free(pool, TRUE, TRUE);
+
         return NULL;
 }

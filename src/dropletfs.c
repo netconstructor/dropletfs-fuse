@@ -471,6 +471,7 @@ main(int argc,
         conf_log(conf);
 
         profile_init();
+        g_thread_init(NULL);
 
         struct fuse_args args = FUSE_ARGS_INIT(argc, argv);
         rc = dfs_fuse_main(&args);
