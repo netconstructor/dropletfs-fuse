@@ -232,10 +232,6 @@ root_dir_preload(GThreadPool *pool,
                 direntname = tmpstr_printf("%s%s", root_dir, dirent.name);
                 memset(&st, 0, sizeof st);
                 g_thread_pool_push(pool, direntname, NULL);
-                if (err) {
-                        LOG(LOG_ERR, "pushing a thread: %s", err->message);
-                        g_error_free(err);
-                }
         }
 
         pentry_set_atime(pe);
@@ -249,14 +245,21 @@ thread_cachedir(void *cb_arg)
 {
         GHashTable *hash = cb_arg;
         int n_children;
+        GError *err;
 
         LOG(LOG_DEBUG, "entering thread");
 
         if (! conf->sc_loop_delay || ! conf->sc_age_threshold)
                 return NULL;
 
-        pool = g_thread_pool_new(cb_get_md, NULL, 50, FALSE, NULL);
-        root_dir_preload(pool, hash);
+        pool = g_thread_pool_new(cb_get_md, NULL, 50, FALSE, &err);
+        if (err)
+                LOG(LOG_ERR, "thread pool creation: %s", err->message);
+        else
+                root_dir_preload(pool, hash);
+
+        while (pool && ! g_thread_pool_get_num_threads(pool))
+                usleep(5 * 1000); /* 5ms */
 
         while (1) {
                 LOG(LOG_DEBUG, "updating cache directories");

@@ -19,6 +19,8 @@ static void
 set_default_stat(struct stat *st,
                  dpl_ftype_t type)
 {
+        memset(st, 0, sizeof *st);
+
         /* default modes, if no corresponding metadata is found */
         switch (type) {
         case DPL_FTYPE_DIR:
@@ -201,16 +203,16 @@ getattr_unset(pentry_t *pe,
                 }
 
                 pentry_set_metadata(pe, metadata);
+                set_filetype_from_stat(pe, st);
+                pentry_set_placeholder(pe, FILE_REMOTE);
 
                 if (pentry_md_unlock(pe)) {
                         ret = -1;
                         goto end;
                 }
 
-                pentry_set_placeholder(pe, FILE_REMOTE);
         }
 
-        set_filetype_from_stat(pe, st);
         (void)hash_fill_dirent(hash, path);
 
         ret = 0;

@@ -18,8 +18,6 @@ extern struct conf *conf;
 static FILE *fp_log;
 static int log_started = 0;
 static int depth = 1;
-static __thread struct timeval tv_enter;
-static __thread struct timeval tv_exit;
 static GHashTable *symbols;
 
 /* symbol entry in the hashtable */
@@ -27,6 +25,7 @@ struct sentry {
         char *name;
         unsigned int n_calls;
         unsigned int sum_duration;
+        struct timeval tv;
 };
 
 static struct sentry *
@@ -40,9 +39,7 @@ sentry_new(void)
                 return NULL;
         }
 
-        se->name = NULL;
-        se->n_calls = 0;
-        se->sum_duration = 0;
+        memset(se, 0, sizeof *se);
 
         return se;
 }
@@ -66,6 +63,7 @@ __cyg_profile_func_enter(void *this,
         Dl_info info;
         struct sentry *se = NULL;
         char *key = NULL;
+        struct timeval tv;
 
         if (! log_started || ! conf->profiling)
                 return;
@@ -75,10 +73,7 @@ __cyg_profile_func_enter(void *this,
         if (! info.dli_sname)
                 return;
 
-        if (strncasecmp("dfs_", info.dli_sname, 4))
-                return;
-
-        gettimeofday(&tv_enter, NULL);
+        gettimeofday(&tv, NULL);
 
         se = g_hash_table_lookup(symbols, info.dli_sname);
         if (! se) {
@@ -95,13 +90,14 @@ __cyg_profile_func_enter(void *this,
                                 sentry_free(se);
                         } else {
                                 LOG(LOG_DEBUG, "%s: insertion in symbol hashtable", key);
+                                memcpy(&se->tv, &tv, sizeof tv);
                                 g_hash_table_insert(symbols, key, se);
                         }
                 }
         }
 
         fprintf(fp_log, "%d.%06d %.*s %s@%p\n",
-                (int)tv_enter.tv_sec, (int)tv_enter.tv_usec,
+                (int)tv.tv_sec, (int)tv.tv_usec,
                 depth, ">", info.dli_sname, this);
         depth++;
 
@@ -114,6 +110,7 @@ __cyg_profile_func_exit(void *this,
         Dl_info info;
         struct sentry *se = NULL;
         int tdiff = 0;
+        struct timeval tv;
 
         if (! log_started || ! conf->profiling)
                 return;
@@ -129,18 +126,17 @@ __cyg_profile_func_exit(void *this,
         if (strncasecmp("dfs_", info.dli_sname, 4))
                 return;
 
-        gettimeofday(&tv_exit, NULL);
-        tdiff = time_diff(&tv_enter, &tv_exit);
-
-        depth--;
-        fprintf(fp_log, "%d.%06d %.*s %s@%p -- %dms\n",
-                (int)tv_exit.tv_sec, (int)tv_exit.tv_usec,
-                depth, "<", info.dli_sname, this, tdiff);
+        gettimeofday(&tv, NULL);
 
         se = g_hash_table_lookup(symbols, info.dli_sname);
         if (se) {
+                tdiff = time_diff(&se->tv, &tv);
                 se->n_calls++;
                 se->sum_duration += tdiff;
+                depth--;
+                fprintf(fp_log, "%d.%06d %.*s %s@%p -- %dms\n",
+                        (int)tv.tv_sec, (int)tv.tv_usec,
+                        depth, "<", info.dli_sname, this, tdiff);
         }
 }
 

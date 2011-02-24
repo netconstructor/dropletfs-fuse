@@ -10,18 +10,18 @@
 typedef struct pentry pentry_t;
 
 enum {
-        FLAG_CLEAN,
+        FLAG_CLEAN=0,
         FLAG_DIRTY,
 };
 
 typedef enum {
-        FILE_REG,
+        FILE_REG=0,
         FILE_DIR,
         FILE_SYMLINK,
 } filetype_t;
 
 enum {
-        FILE_LOCAL,
+        FILE_LOCAL=0,
         FILE_REMOTE,
         FILE_UNSET,
 };
