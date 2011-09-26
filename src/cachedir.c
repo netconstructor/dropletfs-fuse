@@ -104,10 +104,6 @@ update_md(gpointer data,
         rc = dfs_namei_timeout(ctx, path, ctx->cur_bucket,
                                ino, NULL, NULL, &type);
 
-        LOG(LOG_DEBUG, "path=%s, dpl_namei: %s, type=%s, parent=%s, obj=%s",
-            path, dpl_status_str(rc), ftype_to_str(type),
-            parent_ino.key, obj_ino.key);
-
         if (DPL_SUCCESS != rc) {
                 LOG(LOG_NOTICE, "dfs_namei_timeout: %s", dpl_status_str(rc));
                 goto end;
