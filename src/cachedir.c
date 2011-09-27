@@ -249,10 +249,12 @@ thread_cachedir(void *cb_arg)
                 return NULL;
 
         pool = g_thread_pool_new(cb_get_md, NULL, 50, FALSE, &err);
-        if (err)
+        if (err) {
                 LOG(LOG_ERR, "thread pool creation: %s", err->message);
-        else
+                goto end;
+        } else {
                 root_dir_preload(pool, hash);
+        }
 
         while (pool && ! g_thread_pool_get_num_threads(pool))
                 usleep(5 * 1000); /* 5ms */
