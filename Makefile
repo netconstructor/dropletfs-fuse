@@ -39,11 +39,13 @@ OBJ= $(SRC:.c=.o)
 
 DEST=/usr/local/bin
 
-bin=bin/dplfs
+BINDIR=bin
+BINNAME=dplfs
+BIN=$(BINDIR)/$(BINNAME)
 
 CC=/usr/bin/gcc
 
-all: $(bin)
+all: $(BIN)
 
 bin/dplfs: $(OBJ)
 	mkdir -p bin
@@ -58,10 +60,10 @@ clear:
 	@echo "done"
 
 clean:
-	rm -f $(OBJ) *~ $(bin)
+	rm -f $(OBJ) *~ $(BIN)
 
 uninstall:
-	rm -f $(DEST)/$(bin)
+	rm -f $(DEST)/$(BINNAME)
 
 install:
-	install -m755 $(bin) $(DEST)
+	install -m755 $(BIN) $(DEST)
