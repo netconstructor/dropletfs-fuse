@@ -321,9 +321,6 @@ check_encryption_flag(dpl_dict_t *metadata)
         char *cipher_type = NULL;
         unsigned int ret = 0;
 
-        if (strncasecmp(conf->encryption_method, "aes", strlen("aes")))
-                goto end;
-
         cipher = dpl_dict_get_value(metadata, "cipher");
         cipher_type = dpl_dict_get_value(metadata, "cipher-type");
 
