@@ -360,8 +360,6 @@ droplet_pp(dpl_ctx_t *ctx)
         PP(access_key, "%s");
         PP(secret_key, "%s");
         PP(ssl_cert_file, "%s");
-        PP(ssl_key_file, "%s");
-        PP(ssl_password, "%s");
         PP(ssl_ca_list, "%s");
 
         PP(trace_level, "%d");
