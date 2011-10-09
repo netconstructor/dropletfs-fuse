@@ -72,7 +72,7 @@ cb_map_dirents(void *elem, void *cb_arg)
         if (metadata)
                 pentry_set_metadata(pe_dirent, metadata);
 
-        pentry_set_atime(pe_dirent);
+        pentry_set_atime(pe_dirent, time(NULL));
 
         (void)pentry_md_unlock(pe_dirent);
   end:
@@ -128,7 +128,7 @@ update_md(gpointer data,
         if (metadata)
                 pentry_set_metadata(pe, metadata);
 
-        pentry_set_atime(pe);
+        pentry_set_atime(pe, time(NULL));
 
         (void)pentry_md_unlock(pe);
   end:
@@ -228,7 +228,7 @@ root_dir_preload(GThreadPool *pool,
                 g_thread_pool_push(pool, direntname, NULL);
         }
 
-        pentry_set_atime(pe);
+        pentry_set_atime(pe, time(NULL));
   err:
         if (dir_hdl)
                 dpl_closedir(dir_hdl);

@@ -122,11 +122,12 @@ pentry_free(pentry_t *pe)
 }
 
 void
-pentry_set_atime(pentry_t *pe)
+pentry_set_atime(pentry_t *pe,
+                 time_t atime)
 {
         assert(pe);
 
-        pe->atime = time(NULL);
+        pe->atime = atime;
 }
 
 time_t

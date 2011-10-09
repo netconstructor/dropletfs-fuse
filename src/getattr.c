@@ -274,7 +274,7 @@ dfs_getattr(const char *path,
         };
 
         ret = cb[pentry_get_placeholder(pe)](pe, path, st);
-        pentry_set_atime(pe);
+        pentry_set_atime(pe, time(NULL));
 
   end:
         return ret;

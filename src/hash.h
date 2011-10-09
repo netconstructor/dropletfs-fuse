@@ -32,7 +32,7 @@ size_t pentry_sizeof(void);
 pentry_t *pentry_new(void);
 void pentry_free(pentry_t *);
 
-void pentry_set_atime(pentry_t *);
+void pentry_set_atime(pentry_t *, time_t);
 time_t pentry_get_atime(pentry_t *);
 
 char *pentry_placeholder_to_str(int);
