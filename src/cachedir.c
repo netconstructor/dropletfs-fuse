@@ -192,7 +192,6 @@ root_dir_preload(GThreadPool *pool,
         pentry_t *pe = NULL;
         char *direntname = NULL;
         char *key = NULL;
-        struct stat st;
 
         pe = g_hash_table_lookup(hash, root_dir);
         if (! pe) {
@@ -226,7 +225,6 @@ root_dir_preload(GThreadPool *pool,
 
         while (DPL_SUCCESS == dpl_readdir(dir_hdl, &dirent)) {
                 direntname = tmpstr_printf("%s%s", root_dir, dirent.name);
-                memset(&st, 0, sizeof st);
                 g_thread_pool_push(pool, direntname, NULL);
         }
 
