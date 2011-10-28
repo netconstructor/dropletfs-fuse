@@ -29,8 +29,14 @@ dfs_chmod(const char *path,
                 goto err;
         }
 
-        if (! metadata)
+        if (! metadata) {
                 metadata = dpl_dict_new(13);
+                if (! metadata) {
+                        LOG(LOG_ERR, "allocation failure");
+                        ret = -1;
+                        goto err;
+                }
+        }
 
         assign_meta_to_dict(metadata, "mode", (unsigned long)mode);
 

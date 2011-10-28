@@ -82,8 +82,15 @@ dfs_create(const char *path,
         fchmod(fd, mode);
 
         meta = pentry_get_metadata(pe);
-        if (! meta)
+
+        if (! meta) {
                 meta = dpl_dict_new(13);
+                if (! meta) {
+                        LOG(LOG_ERR, "allocation failure");
+                        ret = -1;
+                        goto err;
+                }
+        }
 
         fill_metadata_from_stat(meta, &st);
         assign_meta_to_dict(meta, "mode", (unsigned long)mode);

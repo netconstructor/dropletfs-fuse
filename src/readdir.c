@@ -31,7 +31,6 @@ dfs_readdir(const char *path,
                 LOG(LOG_ERR, "%s: can't find any entry in hashtable", path);
                 ret = -1;
                 goto err;
-
         }
 
         rc = dfs_chdir_timeout(ctx, path);

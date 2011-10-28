@@ -140,7 +140,14 @@ dfs_release(const char *path,
         }
 
         size = st.st_size;
+
         dict = dpl_dict_new(13);
+        if (! dict) {
+                LOG(LOG_ERR, "allocation failure");
+                ret = -1;
+                goto err;
+        }
+
         fill_metadata_from_stat(dict, &st);
         fd_tosend = fd;
 
