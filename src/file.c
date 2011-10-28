@@ -16,6 +16,30 @@
 extern struct conf *conf;
 extern dpl_ctx_t *ctx;
 
+static int
+safe_close(int fd)
+{
+        int ret;
+
+  retry:
+        ret = close(fd);
+        if (-1 == ret) {
+                if (EINTR == errno) {
+                        goto retry;
+                } else {
+                        LOG(LOG_ERR, "close(fd=%d): %s (%d)",
+                            fd, strerror(errno), errno);
+                        ret = -1;
+                        goto end;
+                }
+        }
+
+        ret = 0;
+
+  end:
+        return ret;
+}
+
 char *
 ftype_to_str(dpl_ftype_t type)
 {
@@ -284,7 +308,7 @@ handle_compression(const char *remote,
                 goto end;
         }
 
-        close(get_data->fd);
+        (void) safe_close(get_data->fd);
         get_data->fd = open(local, O_RDONLY);
         if (-1 == get_data->fd) {
                 LOG(LOG_ERR, "open: %s", strerror(errno));
@@ -434,7 +458,7 @@ dfs_get_local_copy(pentry_t *pe,
 
         if (DPL_SUCCESS != rc) {
                 LOG(LOG_ERR, "dpl_openread: %s", dpl_status_str(rc));
-                close(get_data.fd);
+                (void) safe_close(get_data.fd);
                 fd = -1;
                 goto end;
         }
@@ -445,7 +469,7 @@ dfs_get_local_copy(pentry_t *pe,
                 goto end;
         }
 
-        if (-1 == close(get_data.fd)) {
+        if (-1 == safe_close(get_data.fd)) {
                 LOG(LOG_ERR, "close(path=%s, fd=%d): %s",
                     local, get_data.fd, strerror(errno));
                 fd = -1;
