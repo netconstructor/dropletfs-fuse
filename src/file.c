@@ -382,6 +382,8 @@ dfs_get_local_copy(pentry_t *pe,
         dpl_status_t rc = DPL_FAILURE;
         char *local = NULL;
         unsigned encryption = 0;
+        mode_t mode = 0644;
+        char *mode_str = NULL;
 
         local = tmpstr_printf("%s%s", conf->cache_dir, remote);
         LOG(LOG_DEBUG, "bucket=%s, path=%s, local=%s",
@@ -438,12 +440,28 @@ dfs_get_local_copy(pentry_t *pe,
                         LOG(LOG_ERR, "unlink(%s): %s", local, strerror(errno));
         }
 
-        get_data.fd = open(local, O_RDWR|O_CREAT|O_TRUNC, 0600);
+        get_data.fd = open(local, O_RDWR|O_CREAT|O_TRUNC, mode);
         if (-1 == get_data.fd) {
                 LOG(LOG_ERR, "open: %s: %s (%d)",
                     local, strerror(errno), errno);
                 fd = -1;
                 goto end;
+        }
+
+        /* try to change the permissions of the local file according to the
+         * remote ones */
+        mode_str = dpl_dict_get_value(metadata, "mode");
+
+        if (mode_str) {
+                mode = strtoul(mode_str, NULL, 10);
+
+                if (-1 == fchmod(get_data.fd, mode)) {
+                        LOG(LOG_ERR, "fchmod: %s: %s (%d)",
+                            local, strerror(errno), errno);
+                        (void) safe_close(get_data.fd);
+                        fd = -1;
+                        goto end;
+                }
         }
 
         encryption = check_encryption_flag(metadata);
