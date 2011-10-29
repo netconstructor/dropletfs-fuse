@@ -66,8 +66,9 @@ echo "OK."
 
 ### standard file section
 
-echo -n "copying /etc/hosts... "
-local=/etc/hosts
+local=$(mktemp)
+dd if=/dev/urandom of=$local count=1 bs=20KB > /dev/null
+echo -n "copying random binary file $local... "
 remote=$(basename $local)
 cp $local $remote
 [ "0" = "$?" ] || die "cp failed"
@@ -83,7 +84,7 @@ echo "OK."
 echo -n "compare the sizes... "
 local_size=$(stat --format "%s" $local)
 remote_size=$(stat --format "%s" $remote)
-[ "$local_size" = "$remote_size" ] || die "local and remote size differ"
+[ "$local_size" = "$remote_size" ] || die "expected $local_size remote size, got $remote_size"
 echo "OK."
 
 echo -n "remove $remote... "
@@ -91,6 +92,25 @@ rm $remote
 [ "0" = "$?" ] || die "rm $remote failed"
 echo "OK."
 
+echo -n "check that we can execute a remote file... "
+echo /bin/ls > $local
+chmod +x $local
+cp $local $remote
+
+# first, is the x bit set?
+local_mode=$(stat --format "%f" $local)
+remote_mode=$(stat --format "%f" $remote)
+[ "$local_mode" = "$remote_mode" ] || die "expected $local_mode remote mode, got $remote_mode"
+echo "OK."
+
+echo -n "can we remotely execute this file... "
+./$remote > /dev/null
+[ "0" = "$?" ] || die "remote execution failed"
+echo "OK."
+
+# cleanup
+rm $local
+rm $remote
 
 ### dir section
 
@@ -106,7 +126,7 @@ rmdir $dir
 echo "OK."
 
 dir="$(basename `mktemp -d`)/a/b"
-echo -n "create a tree... $dir "
+echo -n "create a tree $dir..."
 mkdir -p $dir
 [ "0" = "$?" ] || die "mkdir -p failed"
 echo "OK."
