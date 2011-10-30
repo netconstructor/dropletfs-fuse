@@ -108,6 +108,22 @@ echo -n "can we remotely execute this file... "
 [ "0" = "$?" ] || die "remote execution failed"
 echo "OK."
 
+echo -n "append data to the file... "
+echo "123" >> $remote
+local_size=$(stat --format "%s" $local)
+remote_size=$(stat --format "%s" $remote)
+expected_size=$(($local_size + 4))
+[ "$expected_size" = "$remote_size" ] || die "expected $expected_size remote size, got $remote_size"
+echo "OK"
+
+echo -n "rewrite the file... "
+echo "123" > $remote
+local_size=$(stat --format "%s" $local)
+remote_size=$(stat --format "%s" $remote)
+expected_size=4
+[ "$expected_size" = "$remote_size" ] || die "expected $expected_size remote size, got $remote_size"
+echo "OK"
+
 # cleanup
 rm $local
 rm $remote
