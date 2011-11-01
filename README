@@ -123,9 +123,9 @@ For example, to exclude all the files ending in .tmp or .foo, type:
 
 $ export DROPLETFS_EXCLUSION_PATTERN='\.tmp$|\.foo$'
 
-In you configuration file:
+Or in your configuration file:
 
-exclusion_pattern = '\.doc$'
+exclusion_pattern = '\.tmp$|\.foo$'
 
 This feature is *experimental*, we do not recommend using it unless you know
 exactly what you're doing.
@@ -158,9 +158,24 @@ In the project directory, just type:
 	$ sudo make uninstall
 
 
+6. ISSUES
+=========
+
+You should be warned that this project is pretty young, so don't
+expect to have a fully POSIX compliant filesystem in a clic. :-)
+
+Anyway, don't be afraid if the test suite punches you in the face,
+this filesystem still fits for 95% of the requirements.
+
 
 Please report bugs and comments to:
 	https://github.com/pozdnychev/dropletfs-fuse/issues
+
+
+And now... enjoy!
+
+
+
 
 
 [1] http://github.com/scality/Droplet
