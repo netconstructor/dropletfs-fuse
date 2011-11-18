@@ -19,7 +19,7 @@ function check()
         msg=$3
 
         if [ "$expected" != "$got" ]
-        then    die "$msg"
+        then    die "$msg - expected $expected but got $got"
 	fi
 }
 
@@ -52,21 +52,21 @@ echo "OK."
 echo -n "check its default size... "
 size=$(stat --printf "%s" $file)
 check 0 $? "stat failed"
-check 0 $size "got size $size while 0 was expected"
+check 0 $size "wrong size"
 echo "OK."
 
 echo -n "check its default owner... "
 owner=$(stat --printf "%u" $file)
 check 0 $? "stat failed"
 uid=$(id -u)
-check $uid $owner "got uid $owner while $uid was expected"
+check $uid $owner "wrong uid"
 echo "OK."
 
 echo -n "check its default group... "
 group=$(stat --printf "%g" $file)
 check 0 $? "stat failed"
 gid=$(id -g)
-check $gid $group "got gid $group while $gid was expected"
+check $gid $group "wrong gid"
 echo "OK."
 
 echo -n "rm this empty file... "
@@ -89,13 +89,13 @@ echo -n "compare the md5... "
 local_md5=$(md5sum $local | cut -f1 -d' ')
 remote_md5=$(md5sum $remote | cut -f1 -d' ')
 check 0 $? "remote md5 failed"
-check $local_md5 $remote_md5 "local (${local_md5}) and remote (${remote_md5}) md5 differ"
+check $local_md5 $remote_md5 "different md5s"
 echo "OK."
 
 echo -n "compare the sizes... "
 local_size=$(stat --format "%s" $local)
 remote_size=$(stat --format "%s" $remote)
-check $local_size $remote_size "expected $local_size remote size, got $remote_size"
+check $local_size $remote_size "different sizes"
 echo "OK."
 
 echo -n "remove $remote... "
@@ -111,7 +111,7 @@ cp $local $remote
 # first, is the x bit set?
 local_mode=$(stat --format "%f" $local)
 remote_mode=$(stat --format "%f" $remote)
-check $local_mode $remote_mode "expected $local_mode remote mode, got $remote_mode"
+check $local_mode $remote_mode "different modes"
 echo "OK."
 
 echo -n "can we remotely execute this file... "
@@ -124,7 +124,7 @@ echo "123" >> $remote
 local_size=$(stat --format "%s" $local)
 remote_size=$(stat --format "%s" $remote)
 expected_size=$(($local_size + 4))
-check $expected_size $remote_size "expected $expected_size remote size, got $remote_size"
+check $expected_size $remote_size "different sizes"
 echo "OK"
 
 echo -n "rewrite the file... "
@@ -132,7 +132,7 @@ echo "123" > $remote
 local_size=$(stat --format "%s" $local)
 remote_size=$(stat --format "%s" $remote)
 expected_size=4
-check $expected_size $remote_size "expected $expected_size remote size, got $remote_size"
+check $expected_size $remote_size "different sizes"
 echo "OK"
 
 # cleanup
