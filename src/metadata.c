@@ -54,12 +54,10 @@ metadatatoll(dpl_dict_t *dict,
         return v;
 }
 
-#define STORE_META(st, dict, name, type, fallback) do {                 \
+#define STORE_META(st, dict, name, type) do {                           \
                 long long v = metadatatoll(dict, #name);                \
                 if (-1 != v)                                            \
                         st->st_##name = (type)v;                        \
-		else							\
-			st->st_##name = (type)fallback;			\
         } while (0 /*CONSTCOND*/)
 
 void
@@ -67,13 +65,14 @@ fill_stat_from_metadata(struct stat *st,
                         dpl_dict_t *dict)
 {
         time_t now = time(NULL);
-        STORE_META(st, dict, size, size_t, 1337);
-        STORE_META(st, dict, mode, mode_t, 0644);
-        STORE_META(st, dict, uid, uid_t, getuid());
-        STORE_META(st, dict, gid, gid_t, getgid());
-        STORE_META(st, dict, atime, time_t, now);
-        STORE_META(st, dict, ctime, time_t, now);
-        STORE_META(st, dict, mtime, time_t, now);
+        STORE_META(st, dict, size, size_t);
+        STORE_META(st, dict, mode, mode_t);
+        STORE_META(st, dict, uid, uid_t);
+        STORE_META(st, dict, gid, gid_t);
+        STORE_META(st, dict, atime, time_t);
+        STORE_META(st, dict, ctime, time_t);
+        STORE_META(st, dict, mtime, time_t);
+
         if (dpl_dict_get(dict, "symlink"))
                 st->st_mode |= S_IFLNK;
 }
