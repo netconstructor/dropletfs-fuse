@@ -239,14 +239,6 @@ dfs_open(const char *path,
 
         mode = get_mode_from_flags(info->flags);
 
-        if (MODE_RDONLY != mode) {
-                if (pentry_lock(pe)) {
-                        ret = -1;
-                        pentry_dec_refcount(pe);
-                        goto err;
-                }
-        }
-
         info->fh = (uint64_t)pe;
         LOG(LOG_DEBUG, "path=%s, MODE=%d", path, mode);
 
