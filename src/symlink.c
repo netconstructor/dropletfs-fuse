@@ -73,5 +73,7 @@ dfs_symlink(const char *oldpath,
         if (dict)
                 dpl_dict_free(dict);
 
+        LOG(LOG_DEBUG, "oldpath=%s newpath=%s ret=%s",
+            oldpath, newpath, dpl_status_str(ret));
         return ret;
 }

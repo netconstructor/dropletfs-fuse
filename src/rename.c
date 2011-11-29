@@ -180,5 +180,7 @@ dfs_rename(const char *oldpath,
         }
 
   err:
+        LOG(LOG_DEBUG, "oldpath=%s newpath=%s ret=%s",
+            oldpath, newpath, dpl_status_str(ret));
         return ret;
 }

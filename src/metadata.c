@@ -5,21 +5,6 @@
 #include "tmpstr.h"
 
 
-static void
-cb_var_print(dpl_var_t *var,
-             void *arg)
-{
-        (void)arg;
-        LOG(LOG_DEBUG, "var=%s, value=%s", var->key, var->value);
-}
-
-void
-print_metadata(dpl_dict_t *dict)
-{
-        dpl_dict_iterate(dict, cb_var_print, NULL);
-}
-
-
 void
 assign_meta_to_dict(dpl_dict_t *dict,
                     char *meta,
@@ -47,21 +32,6 @@ fill_metadata_from_stat(dpl_dict_t *dict,
         assign_meta_to_dict(dict, "ctime", (unsigned long)st->st_ctime);
 }
 
-void
-fill_default_metadata(dpl_dict_t *dict)
-{
-        time_t t;
-
-        t = time(NULL);
-        assign_meta_to_dict(dict, "mode", (unsigned long)umask(S_IWGRP|S_IWOTH));
-        assign_meta_to_dict(dict, "uid", (unsigned long)getuid());
-        assign_meta_to_dict(dict, "gid", (unsigned long)getgid());
-        assign_meta_to_dict(dict, "atime", (unsigned long)t);
-        assign_meta_to_dict(dict, "ctime", (unsigned long)t);
-        assign_meta_to_dict(dict, "mtime", (unsigned long)t);
-
-}
-
 static long long
 metadatatoll(dpl_dict_t *dict,
              const char *const name)
@@ -72,7 +42,6 @@ metadatatoll(dpl_dict_t *dict,
         value = dpl_dict_get_value(dict, (char *)name);
 
         if (! value) {
-                LOG(LOG_NOTICE, "can't grab any meta '%s'", name);
                 return -1;
         }
 
@@ -105,4 +74,6 @@ fill_stat_from_metadata(struct stat *st,
         STORE_META(st, dict, atime, time_t, now);
         STORE_META(st, dict, ctime, time_t, now);
         STORE_META(st, dict, mtime, time_t, now);
+        if (dpl_dict_get(dict, "symlink"))
+                st->st_mode |= S_IFLNK;
 }

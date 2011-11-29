@@ -16,7 +16,7 @@ dfs_mkdir(const char *path,
         LOG(LOG_DEBUG, "path=%s, mode=0x%x", path, (int)mode);
 
         rc = dfs_mkdir_timeout(ctx, path);
-        if (DPL_SUCCESS != rc && DPL_ENOENT != rc) {
+        if (DPL_SUCCESS != rc) {
                 LOG(LOG_ERR, "dfs_mkdir_timeout: %s", dpl_status_str(rc));
                 ret = -1;
                 goto err;
@@ -24,5 +24,6 @@ dfs_mkdir(const char *path,
 
         ret = 0;
  err:
+        LOG(LOG_DEBUG, "path=%s ret=%s", path, dpl_status_str(ret));
         return ret;
 }

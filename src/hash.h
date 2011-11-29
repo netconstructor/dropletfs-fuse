@@ -47,11 +47,11 @@ struct list *pentry_get_dirents(pentry_t *);
 void pentry_unlink_cache_file(pentry_t *);
 
 int pentry_trylock(pentry_t *);
-int pentry_lock(pentry_t *);
-int pentry_unlock(pentry_t *);
+void pentry_lock(pentry_t *);
+void pentry_unlock(pentry_t *);
 int pentry_md_trylock(pentry_t *);
-int pentry_md_lock(pentry_t *);
-int pentry_md_unlock(pentry_t *);
+void pentry_md_lock(pentry_t *);
+void pentry_md_unlock(pentry_t *);
 
 void pentry_inc_refcount(pentry_t *);
 void pentry_dec_refcount(pentry_t *);
@@ -81,5 +81,6 @@ dpl_dict_t *pentry_get_metadata(pentry_t *);
 /* return 0 on success, -1 on failure */
 int pentry_set_digest(pentry_t *, const char *);
 char *pentry_get_digest(pentry_t *);
+
 
 #endif

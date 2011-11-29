@@ -110,7 +110,7 @@ dfs_create(const char *path,
         if (meta)
                 dpl_dict_free(meta);
 
-        LOG(LOG_DEBUG, "exiting function (return value=%d)", ret);
+        LOG(LOG_DEBUG, "path=%s ret=%s", path, dpl_status_str(ret));
         return ret;
 
 }

@@ -103,21 +103,14 @@ getattr_remote(pentry_t *pe,
 
         LOG(LOG_DEBUG, "%s: get remote metadata through hashtable", path);
 
-        if (pentry_md_lock(pe)) {
-                ret = -1;
-                goto err;
-        }
+        pentry_md_lock(pe);
+
         meta = pentry_get_metadata(pe);
         if (meta) {
                 fill_stat_from_metadata(st, meta);
-                if (dpl_dict_get(meta, "symlink"))
-                        st->st_mode |= S_IFLNK;
         }
 
-        if (pentry_md_unlock(pe)) {
-                ret = -1;
-                goto err;
-        }
+        pentry_md_unlock(pe);
 
         ret = 0;
   err:
@@ -277,5 +270,6 @@ dfs_getattr(const char *path,
         pentry_set_atime(pe, time(NULL));
 
   end:
+        LOG(LOG_DEBUG, "path=%s ret=%s", path, dpl_status_str(ret));
         return ret;
 }

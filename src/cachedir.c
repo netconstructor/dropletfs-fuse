@@ -74,7 +74,7 @@ cb_map_dirents(void *elem, void *cb_arg)
 
         pentry_set_atime(pe_dirent, time(NULL));
 
-        (void)pentry_md_unlock(pe_dirent);
+        pentry_md_unlock(pe_dirent);
   end:
         if (metadata)
                 dpl_dict_free(metadata);
@@ -130,7 +130,7 @@ update_md(gpointer data,
 
         pentry_set_atime(pe, time(NULL));
 
-        (void)pentry_md_unlock(pe);
+        pentry_md_unlock(pe);
   end:
         if (metadata)
                 dpl_dict_free(metadata);

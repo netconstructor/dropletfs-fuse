@@ -56,5 +56,6 @@ dfs_readdir(const char *path,
 
         ret = 0;
   err:
+        LOG(LOG_DEBUG, "path=%s ret=%s", path, dpl_status_str(ret));
         return ret;
 }

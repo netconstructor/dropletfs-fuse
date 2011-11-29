@@ -56,6 +56,6 @@ dfs_readlink(const char *path,
         if (dict)
                 dpl_dict_free(dict);
 
-        LOG(LOG_DEBUG, "%s", path);
+        LOG(LOG_DEBUG, "path=%s ret=%s", path, dpl_status_str(ret));
         return 0;
 }

@@ -213,7 +213,6 @@ compare_digests(pentry_t *pe,
                 goto err;
         }
 
-        print_metadata(dict);
         ret = -1;
 
         remote = dpl_dict_get_value(dict, "etag");

@@ -58,5 +58,7 @@ dfs_chmod(const char *path,
         if (metadata)
                 dpl_dict_free(metadata);
 
+        LOG(LOG_DEBUG, "path=%s ret=%s", path, dpl_status_str(ret));
+
         return ret;
 }

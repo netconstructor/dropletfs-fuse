@@ -334,17 +334,12 @@ pentry_gen_trylock(pentry_t *pe,
 
         assert(pe);
 
-        LOG(LOG_DEBUG, "path=%s: trylock(fd=%d)...", pe->path, pe->fd);
-
         ret = pthread_mutex_trylock(lock);
-
-        LOG(LOG_DEBUG, "path=%s fd=%d: %sacquired",
-            pe->path, pe->fd, ret ? "not " : "");
 
         return ret;
 }
 
-static int
+static void
 pentry_gen_lock(pentry_t *pe,
                 pthread_mutex_t *lock)
 {
@@ -352,20 +347,15 @@ pentry_gen_lock(pentry_t *pe,
 
         assert(pe);
 
-        LOG(LOG_DEBUG, "path=%s: lock(fd=%d)...", pe->path, pe->fd);
+        LOG(LOG_DEBUG, "waiting for lock @%p", (void *) lock);
 
         ret = pthread_mutex_lock(lock);
-        if (ret)
-                LOG(LOG_ERR, "path=%s, fd=%d: %s",
-                    pe->path, pe->fd, strerror(errno));
-        else
-                LOG(LOG_DEBUG, "path=%s, fd=%d: acquired",
-                    pe->path, pe->fd);
+        assert(0 == ret);
 
-        return ret;
+        LOG(LOG_DEBUG, "got lock @%p", (void *) lock);
 }
 
-static int
+static void
 pentry_gen_unlock(pentry_t *pe,
                   pthread_mutex_t *lock)
 {
@@ -373,16 +363,10 @@ pentry_gen_unlock(pentry_t *pe,
 
         assert(pe);
 
-        LOG(LOG_DEBUG, "path=%s, unlock(fd=%d)...", pe->path, pe->fd);
-
         ret = pthread_mutex_unlock(lock);
-        if (ret)
-                LOG(LOG_ERR, "path=%s, fd=%d: %s",
-                    pe->path, pe->fd, strerror(errno));
-        else
-                LOG(LOG_DEBUG, "path=%s, fd=%d: released", pe->path, pe->fd);
+        assert(0 == ret);
 
-        return ret;
+        LOG(LOG_DEBUG, "unlock lock @%p", (void *) lock);
 }
 
 int
@@ -390,29 +374,23 @@ pentry_trylock(pentry_t *pe)
 {
         assert(pe);
 
-        LOG(LOG_DEBUG, "path=%s: trylock(fd=%d)...", pe->path, pe->fd);
-
         return pentry_gen_trylock(pe, &pe->mutex);
 }
 
-int
+void
 pentry_lock(pentry_t *pe)
 {
         assert(pe);
 
-        LOG(LOG_DEBUG, "path=%s: lock(fd=%d)...", pe->path, pe->fd);
-
-        return pentry_gen_lock(pe, &pe->mutex);
+        pentry_gen_lock(pe, &pe->mutex);
 }
 
-int
+void
 pentry_unlock(pentry_t *pe)
 {
         assert(pe);
 
-        LOG(LOG_DEBUG, "path=%s, unlock(fd=%d)...", pe->path, pe->fd);
-
-        return pentry_gen_unlock(pe, &pe->mutex);
+        pentry_gen_unlock(pe, &pe->mutex);
 }
 
 int
@@ -420,29 +398,23 @@ pentry_md_trylock(pentry_t *pe)
 {
         assert(pe);
 
-        LOG(LOG_DEBUG, "path=%s: trylock(fd=%d)...", pe->path, pe->fd);
-
         return pentry_gen_trylock(pe, &pe->md_mutex);
 }
 
-int
+void
 pentry_md_lock(pentry_t *pe)
 {
         assert(pe);
 
-        LOG(LOG_DEBUG, "path=%s: lock(fd=%d)...", pe->path, pe->fd);
-
-        return pentry_gen_lock(pe, &pe->md_mutex);
+        pentry_gen_lock(pe, &pe->md_mutex);
 }
 
-int
+void
 pentry_md_unlock(pentry_t *pe)
 {
         assert(pe);
 
-        LOG(LOG_DEBUG, "path=%s, unlock(fd=%d)...", pe->path, pe->fd);
-
-        return pentry_gen_unlock(pe, &pe->md_mutex);
+        pentry_gen_unlock(pe, &pe->md_mutex);
 }
 
 

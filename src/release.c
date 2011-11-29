@@ -245,6 +245,6 @@ dfs_release(const char *path,
         }
 
   end:
-        LOG(LOG_DEBUG, "return value=%d", ret);
+        LOG(LOG_DEBUG, "path=%s ret=%s", path, dpl_status_str(ret));
         return ret;
 }
