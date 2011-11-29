@@ -15,6 +15,7 @@ extern dpl_ctx_t *ctx;
 extern struct conf *conf;
 extern GHashTable *hash;
 
+
 static void
 set_default_stat(struct stat *st,
                  dpl_ftype_t type)
@@ -185,26 +186,24 @@ getattr_unset(pentry_t *pe,
         }
 
         set_default_stat(st, type);
-        if (metadata) {
-                if (dpl_dict_get(metadata, "symlink"))
-                        st->st_mode |= S_IFLNK;
-                fill_stat_from_metadata(st, metadata);
 
-                if (pentry_md_lock(pe)) {
+        if (! metadata) {
+                metadata = dpl_dict_new(13);
+                if (! metadata) {
+                        LOG(LOG_ERR, "allocation error");
                         ret = -1;
                         goto end;
                 }
-
-                pentry_set_metadata(pe, metadata);
-                set_filetype_from_stat(pe, st);
-                pentry_set_placeholder(pe, FILE_REMOTE);
-
-                if (pentry_md_unlock(pe)) {
-                        ret = -1;
-                        goto end;
-                }
-
         }
+
+        fill_metadata_from_stat(metadata, st);
+        fill_stat_from_metadata(st, metadata);
+
+        pentry_md_lock(pe);
+        pentry_set_metadata(pe, metadata);
+        set_filetype_from_stat(pe, st);
+        pentry_set_placeholder(pe, FILE_REMOTE);
+        pentry_md_unlock(pe);
 
         (void)hash_fill_dirent(hash, path);
 
