@@ -1,18 +1,18 @@
-#!/bin/sh
+#!/bin/bash
 
 # consider the fuse partition already mounted
 # if no argument, then we assumre $cwd is in this very mountpoint
 # otherwise, the parameter is the path to this mountpoint
 MNT=$(pwd)
 
-function die()
+function die
 {
     echo
     echo "$1"
     exit -1
 }
 
-function check()
+function check
 {
         expected=$1
         got=$2
