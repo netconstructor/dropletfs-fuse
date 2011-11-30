@@ -358,7 +358,6 @@ droplet_pp(dpl_ctx_t *ctx)
         PP(port, "%d");
 
         PP(access_key, "%s");
-        PP(secret_key, "%s");
         PP(ssl_cert_file, "%s");
         PP(ssl_ca_list, "%s");
 
