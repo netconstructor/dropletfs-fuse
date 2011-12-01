@@ -16,6 +16,7 @@ extern struct conf *conf;
 extern GHashTable *hash;
 
 
+
 static void
 set_default_stat(struct stat *st,
                  dpl_ftype_t type)
@@ -94,6 +95,7 @@ hash_fill_dirent(GHashTable *hash,
         return ret;
 }
 
+
 static int
 getattr_remote(pentry_t *pe,
               const char *path,
@@ -107,9 +109,13 @@ getattr_remote(pentry_t *pe,
         pentry_md_lock(pe);
 
         meta = pentry_get_metadata(pe);
-        if (meta) {
-                fill_stat_from_metadata(st, meta);
+        if (! meta) {
+                LOG(LOG_ERR, "%s: no metadata found in hashtable", path);
+                ret = -1;
+                goto err;
         }
+
+        fill_stat_from_metadata(st, meta);
 
         pentry_md_unlock(pe);
 
@@ -159,6 +165,7 @@ getattr_unset(pentry_t *pe,
         dpl_ino_t ino, parent_ino, obj_ino;
         dpl_status_t rc;
         dpl_dict_t *metadata = NULL;
+        dpl_dict_t *dict = NULL;
         int ret;
 
         LOG(LOG_DEBUG, "%s: get remote metadata with dpl_getattr()", path);
@@ -178,7 +185,7 @@ getattr_unset(pentry_t *pe,
                 goto end;
         }
 
-        rc = dfs_getattr_timeout(ctx, path, &metadata);
+        rc = dfs_getattr_all_headers_timeout(ctx, path, &metadata);
         if (DPL_SUCCESS != rc && DPL_EISDIR != rc) {
                 LOG(LOG_ERR, "dfs_getattr_timeout: %s", dpl_status_str(rc));
                 ret = -1;
@@ -187,26 +194,43 @@ getattr_unset(pentry_t *pe,
 
         set_default_stat(st, type);
 
-        if (! metadata) {
-                metadata = dpl_dict_new(13);
-                if (! metadata) {
-                        LOG(LOG_ERR, "allocation error");
-                        ret = -1;
-                        goto end;
-                }
+        dict = dpl_dict_new(13);
+        if (! dict) {
+                LOG(LOG_ERR, "allocation error");
+                ret = -1;
+                goto end;
         }
 
-        if (DPL_FTYPE_DIR == type)
-          {
-            fill_metadata_from_stat(metadata, st);
-          }
-        else
-          {
-            fill_stat_from_metadata(st, metadata);
-          }
+        rc = dpl_dict_filter_prefix(dict, metadata, "x-amz-meta-");
+        if (DPL_SUCCESS != rc) {
+                LOG(LOG_ERR, "filter error");
+                ret = -1;
+                goto end;
+        }
+
+        set_default_stat(st, type);
+
+        fill_metadata_from_stat(dict, st);
+        if (DPL_FTYPE_REG == type) {
+
+                /* we  might have not any "size" usermd, because the object was
+                 * put with another application; so we rely on the "content-length"
+                 * header */
+                char *size = NULL;
+                size = dpl_dict_get_value(metadata, "size");
+                if (! size) {
+                        LOG(LOG_DEBUG, "no usermd size spotted!");
+                        char *length = dpl_dict_get_value(metadata, "content-length");
+                        if (length) {
+                                dpl_dict_add(dict, "size", length, 0);
+                        }
+
+                }
+                fill_stat_from_metadata(st, dict);
+        }
 
         pentry_md_lock(pe);
-        pentry_set_metadata(pe, metadata);
+        pentry_set_metadata(pe, dict);
         set_filetype_from_stat(pe, st);
         pentry_set_placeholder(pe, FILE_REMOTE);
         pentry_md_unlock(pe);
@@ -218,8 +242,13 @@ getattr_unset(pentry_t *pe,
         if (metadata)
                 dpl_dict_free(metadata);
 
+        if (dict)
+                dpl_dict_free(dict);
+
         return ret;
 }
+
+
 
 int
 dfs_getattr(const char *path,
@@ -274,6 +303,7 @@ dfs_getattr(const char *path,
         ret = cb[pentry_get_placeholder(pe)](pe, path, st);
         pentry_set_atime(pe, time(NULL));
 
+        LOG(LOG_DEBUG, "size=%d gid=%d uid=%d", (int) st->st_size, (int) st->st_gid, (int) st->st_uid);
   end:
         LOG(LOG_DEBUG, "path=%s ret=%s", path, dpl_status_str(ret));
         return ret;

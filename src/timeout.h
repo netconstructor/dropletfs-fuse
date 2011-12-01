@@ -4,6 +4,7 @@
 #include <droplet.h>
 
 dpl_status_t dfs_namei_timeout(dpl_ctx_t *, const char *, char *, dpl_ino_t, dpl_ino_t *,  dpl_ino_t *, dpl_ftype_t *);
+dpl_status_t dfs_getattr_all_headers_timeout(dpl_ctx_t *, const char *, dpl_dict_t **);
 dpl_status_t dfs_getattr_timeout(dpl_ctx_t *, const char *, dpl_dict_t **);
 dpl_status_t dfs_setattr_timeout(dpl_ctx_t *, const char *, dpl_dict_t *);
 dpl_status_t dfs_head_all_timeout(dpl_ctx_t *, char *, char *, char *, dpl_condition_t *, dpl_dict_t **);

@@ -10,17 +10,22 @@
                 delay *= 2;                                     \
         } while (0)
 
-dpl_status_t
-dfs_getattr_timeout(dpl_ctx_t *ctx,
-                    const char *path,
-                    dpl_dict_t **metadata)
+static dpl_status_t
+dfs_getattr_gen_timeout(dpl_ctx_t *ctx,
+                        const char *path,
+                        int all_headers,
+                        dpl_dict_t **metadatap)
 {
         int tries = 0;
         int delay = 1;
         dpl_status_t rc;
 
   retry:
-        rc = dpl_getattr(ctx, (char *)path, metadata);
+        if (all_headers)
+                rc = dpl_getattr_raw(ctx, (char *)path, metadatap);
+        else
+                rc = dpl_getattr(ctx, (char *)path, metadatap);
+
         if (DPL_SUCCESS != rc && DPL_EISDIR != rc) {
                 if (DPL_ENOENT != rc && (tries < conf->max_retry)) {
                         ERR_TIMEOUT(dpl_getattr);
@@ -29,6 +34,22 @@ dfs_getattr_timeout(dpl_ctx_t *ctx,
         }
 
         return rc;
+}
+
+dpl_status_t
+dfs_getattr_all_headers_timeout(dpl_ctx_t *ctx,
+                                const char *path,
+                                dpl_dict_t **metadatap)
+{
+        return dfs_getattr_gen_timeout(ctx, path, 1, metadatap);
+}
+
+dpl_status_t
+dfs_getattr_timeout(dpl_ctx_t *ctx,
+                    const char *path,
+                    dpl_dict_t **metadatap)
+{
+        return dfs_getattr_gen_timeout(ctx, path, 0, metadatap);
 }
 
 dpl_status_t
