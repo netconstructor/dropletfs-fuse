@@ -164,6 +164,27 @@ rmdir -p $dir
 check 0 $? "rmdir -p failed"
 echo "OK."
 
+dir=$(basename `mktemp -d`)
+echo "create a symbolic link..."
+echo -n "first, create a dir: ${dir}... "
+mkdir $dir
+check 0 $? "mkdir failed"
+echo "OK."
+
+echo -n "then create a symlink to this dir... "
+lnk=${dir}.symlink
+ln -s $dir ${lnk}
+check 0 $? "ln -s failed"
+echo "OK."
+
+echo -n "check the symlink file type... "
+type=$(stat --format "%F" ${lnk})
+check "symbolic link" "$type" "wrong file type"
+echo "OK."
+
+#cleanup
+rm $lnk
+rmdir $dir
 
 # teardown
 popd > /dev/null
