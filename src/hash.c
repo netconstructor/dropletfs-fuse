@@ -347,12 +347,8 @@ pentry_gen_lock(pentry_t *pe,
 
         assert(pe);
 
-        LOG(LOG_DEBUG, "waiting for lock @%p", (void *) lock);
-
         ret = pthread_mutex_lock(lock);
         assert(0 == ret);
-
-        LOG(LOG_DEBUG, "got lock @%p", (void *) lock);
 }
 
 static void
@@ -365,8 +361,6 @@ pentry_gen_unlock(pentry_t *pe,
 
         ret = pthread_mutex_unlock(lock);
         assert(0 == ret);
-
-        LOG(LOG_DEBUG, "unlock lock @%p", (void *) lock);
 }
 
 int
@@ -487,6 +481,7 @@ pentry_set_metadata(pentry_t *pe,
         }
 
         if (DPL_FAILURE == dpl_dict_copy(pe->metadata, dict)) {
+                LOG(LOG_ERR, "dpl_dict_copy: failed");
                 ret = -1;
                 goto err;
         }

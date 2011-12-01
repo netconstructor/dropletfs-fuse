@@ -63,6 +63,7 @@ dfs_getxattr(const char *path,
              char *value,
              size_t size)
 {
+        LOG(LOG_DEBUG, "path=%s, value=%s", path, value);
         return 0;
 }
 
