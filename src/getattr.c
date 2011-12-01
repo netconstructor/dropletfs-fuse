@@ -196,8 +196,14 @@ getattr_unset(pentry_t *pe,
                 }
         }
 
-        fill_metadata_from_stat(metadata, st);
-        fill_stat_from_metadata(st, metadata);
+        if (DPL_FTYPE_DIR == type)
+          {
+            fill_metadata_from_stat(metadata, st);
+          }
+        else
+          {
+            fill_stat_from_metadata(st, metadata);
+          }
 
         pentry_md_lock(pe);
         pentry_set_metadata(pe, metadata);
