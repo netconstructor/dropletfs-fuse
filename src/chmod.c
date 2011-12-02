@@ -45,9 +45,12 @@ dfs_chmod(const char *path,
         if (-1 != fd && FILE_LOCAL == pentry_get_placeholder(pe)) {
                 /* change the cache file info */
                 if (-1 == fchmod(fd, mode)) {
-                        LOG(LOG_ERR, "fchmod(fd=%d): %s", fd, strerror(errno));
-                        ret = -1;
-                        goto err;
+                        if (EPERM != errno) {
+                                LOG(LOG_ERR, "fchmod(fd=%d, mode=%d): %s (%d)",
+                                    fd, (int) mode, strerror(errno), errno);
+                                ret = -1;
+                                goto err;
+                        }
                 }
         }
 

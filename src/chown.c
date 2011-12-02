@@ -1,5 +1,7 @@
 #include <glib.h>
 #include <droplet.h>
+#include <assert.h>
+#include <errno.h>
 
 #include "chown.h"
 #include "log.h"
@@ -16,33 +18,46 @@ dfs_chown(const char *path,
           uid_t uid,
           gid_t gid)
 {
-        return 0;
         dpl_dict_t *metadata = NULL;
         dpl_status_t rc;
         int ret;
         pentry_t *pe = NULL;
+        time_t now;
+        int fd = -1;
 
         LOG(LOG_DEBUG, "%s, uid=%lu, gid=%lu",
             path, (unsigned long)uid, (unsigned long)gid);
 
-        rc = dfs_getattr_timeout(ctx, path, &metadata);
-        if (DPL_SUCCESS != rc) {
-                LOG(LOG_ERR, "dpl_getattr: %s", dpl_status_str(rc));
+        pe = g_hash_table_lookup(hash, path);
+        if (! pe) {
+                LOG(LOG_ERR, "path=%s no entry for in hashtable", path);
                 ret = -1;
                 goto err;
         }
 
-        if (! metadata) {
-                metadata = dpl_dict_new(13);
-                if (! metadata) {
-                        LOG(LOG_ERR, "allocation failure");
-                        ret = -1;
-                        goto err;
-                }
-        }
+        metadata = pentry_get_metadata(pe);
+
+        assert(NULL != metadata);
+
+        now = time(NULL);
+        assign_meta_to_dict(metadata, "mtime", (unsigned long)now);
+        assign_meta_to_dict(metadata, "ctime", (unsigned long)now);
 
         assign_meta_to_dict(metadata, "uid", (unsigned long)uid);
         assign_meta_to_dict(metadata, "gid", (unsigned long)gid);
+
+        fd = pentry_get_fd(pe);
+        if (-1 != fd && FILE_LOCAL == pentry_get_placeholder(pe)) {
+                /* change the cache file info */
+                if (-1 == fchown(fd, uid, gid)) {
+                        if (EPERM != errno) {
+                                LOG(LOG_ERR, "fchown(fd=%d, uid=%d, gid=%d): %s (%d)",
+                                    fd, (int) uid, (int) gid, strerror(errno), errno);
+                                ret = -1;
+                                goto err;
+                        }
+                }
+        }
 
         rc = dfs_setattr_timeout(ctx, path, metadata);
         if (DPL_SUCCESS != rc) {
@@ -50,18 +65,8 @@ dfs_chown(const char *path,
                 ret = -1;
                 goto err;
         }
-
-        pe = g_hash_table_lookup(hash, path);
-        if (pe) {
-                pentry_set_metadata(pe, metadata);
-                pentry_set_atime(pe, time(NULL));
-        }
-
         ret = 0;
   err:
-        if (metadata)
-                dpl_dict_free(metadata);
-
         LOG(LOG_DEBUG, "path=%s ret=%s", path, dpl_status_str(ret));
 
         return ret;

@@ -3,7 +3,7 @@
 # consider the fuse partition already mounted
 # if no argument, then we assumre $cwd is in this very mountpoint
 # otherwise, the parameter is the path to this mountpoint
-MNT=$(pwd)
+MNT=""
 
 function die
 {
@@ -23,17 +23,24 @@ function check
 	fi
 }
 
-if [ "$1" != "" ]
+function usage
+{
+    echo "Usage: $0 <mount point>"
+}
+
+if [ "$2" != "" ]
 then
-    MNT="$1"
+    usage
+    exit 1
 fi
+
+MNT=$1
 
 # setup
 testdir="$MNT/$(basename `mktemp -d`)"
-mkdir "$testdir"
+mkdir "$testdir" || die "setup: mkdir failed"
 
 pushd "$testdir"
-
 
 
 echo -n "test basic listing..."
@@ -144,6 +151,23 @@ check 0 $? "chmod failed"
 remote_mode=$(stat --format "%a" $remote)
 check $expected_mode $remote_mode "differents modes"
 echo "OK."
+
+# file uid/gid
+
+# we can NOT change the permissions on our local cache fs, so we umount/mount
+# the directory, and call chown().  Thus, we should change the remote attributes
+
+# expected_uid="666"
+# expected_gid="1337"
+# echo -n "change the uid:gid of $remote to ${expected_uid}:${expected_gid}... "
+# chown ${expected_uid}:${expected_gid} $remote
+# check 0 $? "chown failed"
+# remote_uid=$(stat --format "%u" $remote)
+# remote_gid=$(stat --format "%g" $remote)
+# check $expected_uid $remote_uid "differents uid"
+# check $expected_gid $remote_gid "differents gid"
+# echo "OK."
+
 
 # cleanup
 rm $local
