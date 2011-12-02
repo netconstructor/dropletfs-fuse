@@ -34,6 +34,10 @@ void pentry_free(pentry_t *);
 
 void pentry_set_atime(pentry_t *, time_t);
 time_t pentry_get_atime(pentry_t *);
+void pentry_set_mtime(pentry_t *, time_t);
+time_t pentry_get_mtime(pentry_t *);
+void pentry_set_ctime(pentry_t *, time_t);
+time_t pentry_get_ctime(pentry_t *);
 
 char *pentry_placeholder_to_str(int);
 void pentry_set_placeholder(pentry_t *, int);

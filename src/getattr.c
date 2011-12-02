@@ -210,22 +210,26 @@ getattr_unset(pentry_t *pe,
 
         set_default_stat(st, type);
 
-        fill_metadata_from_stat(dict, st);
-        if (DPL_FTYPE_REG == type) {
+        /* we  might have not any "size" usermd, because the object was
+         * put with another application; so we rely on the "content-length"
+         * header */
+        char *size = NULL;
+        size = dpl_dict_get_value(dict, "size");
+        if (! size) {
 
-                /* we  might have not any "size" usermd, because the object was
-                 * put with another application; so we rely on the "content-length"
-                 * header */
-                char *size = NULL;
-                size = dpl_dict_get_value(metadata, "size");
-                if (! size) {
-                        LOG(LOG_DEBUG, "no usermd size spotted!");
-                        char *length = dpl_dict_get_value(metadata, "content-length");
-                        if (length) {
-                                dpl_dict_add(dict, "size", length, 0);
-                        }
+                /* so, it's the first time we handle this object through dplfs,
+                 * let's create some homemade metadata */
+                fill_metadata_from_stat(dict, st);
 
+                /* then use the "content-length" as size */
+                LOG(LOG_DEBUG, "no usermd size spotted!");
+                char *length = dpl_dict_get_value(metadata, "content-length");
+                if (length) {
+                        dpl_dict_add(dict, "size", length, 0);
                 }
+
+                st->st_size = (size_t) strtoul(length, NULL, 10);
+        } else {
                 fill_stat_from_metadata(st, dict);
         }
 

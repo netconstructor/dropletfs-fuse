@@ -305,14 +305,14 @@ struct fuse_operations dfs_ops = {
         .chmod      = dfs_chmod,
         .chown      = dfs_chown,
         .mknod      = dfs_mknod,
+        .readlink   = dfs_readlink,
+        .symlink    = dfs_symlink,
+        .rename     = dfs_rename,
 
         /* not implemented yet */
         .getxattr   = dfs_getxattr,
         .listxattr  = dfs_listxattr,
         .removexattr= dfs_removexattr,
-        .readlink   = dfs_readlink,
-        .symlink    = dfs_symlink,
-        .rename     = dfs_rename,
         .truncate   = dfs_truncate,
         .utime      = dfs_utime,
         .flush      = dfs_flush,

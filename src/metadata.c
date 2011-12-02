@@ -47,7 +47,7 @@ metadatatoll(dpl_dict_t *dict,
 
         v = strtoull(value, NULL, 10);
         if (0 == strcmp(name, "mode"))
-                LOG(LOG_DEBUG, "meta=%s, value=0x%x", name, (unsigned)v);
+                LOG(LOG_DEBUG, "meta=%s, value=O%x", name, (unsigned)v);
         else
                 LOG(LOG_DEBUG, "meta=%s, value=%s", name, value);
 

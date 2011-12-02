@@ -28,7 +28,7 @@ struct pentry {
         filetype_t filetype;
         struct list *dirent;
         int ondisk;
-        time_t atime;
+        time_t atime, mtime, ctime;
 };
 
 size_t
@@ -136,6 +136,40 @@ pentry_get_atime(pentry_t *pe)
         assert(pe);
 
         return pe->atime;
+}
+
+void
+pentry_set_mtime(pentry_t *pe,
+                 time_t mtime)
+{
+        assert(pe);
+
+        pe->mtime = mtime;
+}
+
+time_t
+pentry_get_mtime(pentry_t *pe)
+{
+        assert(pe);
+
+        return pe->mtime;
+}
+
+void
+pentry_set_ctime(pentry_t *pe,
+                 time_t ctime)
+{
+        assert(pe);
+
+        pe->ctime = ctime;
+}
+
+time_t
+pentry_get_ctime(pentry_t *pe)
+{
+        assert(pe);
+
+        return pe->ctime;
 }
 
 char *
