@@ -136,6 +136,15 @@ expected_size=4
 check $expected_size $remote_size "different sizes"
 echo "OK"
 
+# file mode
+expected_mode="631"
+echo -n "change the mode of $remote to ${expected_mode}... "
+chmod $expected_mode $remote
+check 0 $? "chmod failed"
+remote_mode=$(stat --format "%a" $remote)
+check $expected_mode $remote_mode "differents modes"
+echo "OK."
+
 # cleanup
 rm $local
 rm $remote
