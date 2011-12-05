@@ -29,22 +29,22 @@ static void
 cb_map_dirents(void *elem, void *cb_arg)
 {
         char *path = NULL;
-        dpl_dict_t *metadata = NULL;
+        dpl_dict_t *usermd = NULL;
         dpl_status_t rc;
         dpl_ftype_t type;
         dpl_ino_t ino, parent_ino, obj_ino;
-        pentry_t *pe_dirent = NULL;
-        pentry_t *pe = NULL;
+        tpath_entry *pe_dirent = NULL;
+        tpath_entry *pe = NULL;
 
         path = elem;
         pe = cb_arg;
 
-        LOG(LOG_DEBUG, "path='%s', dirent='%s'", path, pentry_get_path(pe));
+        LOG(LOG_DEBUG, "path='%s', dirent='%s'", path, pe->path);
 
         pe_dirent = g_hash_table_lookup(hash, path);
         if (! pe_dirent) {
                 LOG(LOG_ERR, "'%s' is not an entry anymore in '%s'",
-                    path, pentry_get_path(pe));
+                    path, pe->path);
                 goto end;
         }
 
@@ -60,7 +60,7 @@ cb_map_dirents(void *elem, void *cb_arg)
                 goto end;
         }
 
-        rc = dfs_getattr_timeout(ctx, path, &metadata);
+        rc = dfs_getattr_timeout(ctx, path, &usermd);
         if (DPL_SUCCESS != rc && DPL_EISDIR != rc) {
                 LOG(LOG_ERR, "dfs_getattr_timeout: %s", dpl_status_str(rc));
                 goto end;
@@ -69,15 +69,15 @@ cb_map_dirents(void *elem, void *cb_arg)
         if (pentry_md_trylock(pe_dirent))
                 goto end;
 
-        if (metadata)
-                pentry_set_metadata(pe_dirent, metadata);
+        if (usermd)
+                pentry_set_usermd(pe_dirent, usermd);
 
-        pentry_set_atime(pe_dirent, time(NULL));
+        pe_dirent->atime = time(NULL);
 
         pentry_md_unlock(pe_dirent);
   end:
-        if (metadata)
-                dpl_dict_free(metadata);
+        if (usermd)
+                dpl_dict_free(usermd);
 
 }
 
@@ -85,23 +85,21 @@ static void
 update_md(gpointer data,
           gpointer user_data)
 {
-        pentry_t *pe = NULL;
-        char *path = NULL;
+        tpath_entry *pe = NULL;
         dpl_ftype_t type;
         dpl_ino_t ino;
         dpl_status_t rc;
-        dpl_dict_t *metadata = NULL;
+        dpl_dict_t *usermd = NULL;
         struct list *dirent = NULL;
 
         (void)user_data;
         pe = data;
-        path = pentry_get_path(pe);
 
-        LOG(LOG_DEBUG, "path=%s", path);
+        LOG(LOG_DEBUG, "path=%s", pe->path);
 
         ino = dpl_cwd(ctx, ctx->cur_bucket);
 
-        rc = dfs_namei_timeout(ctx, path, ctx->cur_bucket,
+        rc = dfs_namei_timeout(ctx, pe->path, ctx->cur_bucket,
                                ino, NULL, NULL, &type);
 
         if (DPL_SUCCESS != rc) {
@@ -109,7 +107,7 @@ update_md(gpointer data,
                 goto end;
         }
 
-        rc = dfs_getattr_timeout(ctx, path, &metadata);
+        rc = dfs_getattr_timeout(ctx, pe->path, &usermd);
         if (DPL_SUCCESS != rc && DPL_EISDIR != rc) {
                 LOG(LOG_ERR, "dfs_getattr_timeout: %s", dpl_status_str(rc));
                 goto end;
@@ -117,23 +115,22 @@ update_md(gpointer data,
 
         /* If this is a directory, update its entries' metadata */
         if (DPL_FTYPE_DIR == type) {
-                dirent = pentry_get_dirents(pe);
-                if (dirent)
-                        list_map(dirent, cb_map_dirents, pe);
+                if (pe->dirent)
+                        list_map(pe->dirent, cb_map_dirents, pe);
         }
 
         if (pentry_md_trylock(pe))
                 goto end;
 
-        if (metadata)
-                pentry_set_metadata(pe, metadata);
+        if (usermd)
+                pentry_set_usermd(pe, usermd);
 
-        pentry_set_atime(pe, time(NULL));
+        pe->atime = time(NULL);
 
         pentry_md_unlock(pe);
   end:
-        if (metadata)
-                dpl_dict_free(metadata);
+        if (usermd)
+                dpl_dict_free(usermd);
 }
 
 static void
@@ -143,7 +140,7 @@ cachedir_callback(gpointer key,
 {
         GHashTable *hash = NULL;
         char *path = NULL;
-        pentry_t *pe = NULL;
+        tpath_entry *pe = NULL;
         time_t age;
         int total_size;
 
@@ -151,12 +148,12 @@ cachedir_callback(gpointer key,
         pe = value;
         hash = user_data;
 
-        age = time(NULL) - pentry_get_atime(pe);
+        age = time(NULL) - pe->atime;
 
-        LOG(LOG_DEBUG, "%s, age=%d sec", path, (int)age);
+        LOG(LOG_DEBUG, "%s, age=%d sec", path, (int) age);
 
         /* 64 is a bold estimation of a path length */
-        total_size = g_hash_table_size(hash) * (pentry_sizeof() + 64);
+        total_size = g_hash_table_size(hash) * (sizeof *pe + 64);
         if (total_size > conf->cache_max_size)
                 return;
 
@@ -189,7 +186,7 @@ root_dir_preload(GThreadPool *pool,
         void *dir_hdl = NULL;
         dpl_dirent_t dirent;
         dpl_status_t rc = DPL_FAILURE;
-        pentry_t *pe = NULL;
+        tpath_entry *pe = NULL;
         char *direntname = NULL;
         char *key = NULL;
 
@@ -228,7 +225,7 @@ root_dir_preload(GThreadPool *pool,
                 g_thread_pool_push(pool, direntname, NULL);
         }
 
-        pentry_set_atime(pe, time(NULL));
+        pe->atime = time(NULL);
   err:
         if (dir_hdl)
                 dpl_closedir(dir_hdl);

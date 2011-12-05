@@ -4,10 +4,9 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <semaphore.h>
 
 #include <droplet.h>
-
-typedef struct pentry pentry_t;
 
 enum {
         FLAG_CLEAN=0,
@@ -26,65 +25,58 @@ enum {
         FILE_UNSET,
 };
 
+/* path entry on remote storage file system */
+typedef struct {
+        int fd;
+        char *path;
+        struct stat st;
+        char digest[MD5_DIGEST_LENGTH];
+        dpl_dict_t *usermd;
+        pthread_mutex_t md_mutex;
+        pthread_mutex_t mutex;
+        sem_t refcount;
+        int flag;
+        int exclude;
+        filetype_t filetype;
+        struct list *dirent;
+        int ondisk;
+        time_t atime, mtime, ctime;
+} tpath_entry;
+
 void hash_print_all(void);
 
-size_t pentry_sizeof(void);
-pentry_t *pentry_new(void);
-void pentry_free(pentry_t *);
-
-void pentry_set_atime(pentry_t *, time_t);
-time_t pentry_get_atime(pentry_t *);
-void pentry_set_mtime(pentry_t *, time_t);
-time_t pentry_get_mtime(pentry_t *);
-void pentry_set_ctime(pentry_t *, time_t);
-time_t pentry_get_ctime(pentry_t *);
+tpath_entry *pentry_new(void);
+void pentry_free(tpath_entry *);
 
 char *pentry_placeholder_to_str(int);
-void pentry_set_placeholder(pentry_t *, int);
-int pentry_get_placeholder(pentry_t *);
 
-int pentry_remove_dirent(pentry_t *, const char *);
-void pentry_add_dirent(pentry_t *, const char *);
+int pentry_remove_dirent(tpath_entry *, const char *);
+void pentry_add_dirent(tpath_entry *, const char *);
 struct list;
-struct list *pentry_get_dirents(pentry_t *);
+struct list *pentry_get_dirents(tpath_entry *);
 
-void pentry_unlink_cache_file(pentry_t *);
+void pentry_unlink_cache_file(tpath_entry *);
 
-int pentry_trylock(pentry_t *);
-void pentry_lock(pentry_t *);
-void pentry_unlock(pentry_t *);
-int pentry_md_trylock(pentry_t *);
-void pentry_md_lock(pentry_t *);
-void pentry_md_unlock(pentry_t *);
+int tpath_entryrylock(tpath_entry *);
+void pentry_lock(tpath_entry *);
+void pentry_unlock(tpath_entry *);
+int pentry_md_trylock(tpath_entry *);
+void pentry_md_lock(tpath_entry *);
+void pentry_md_unlock(tpath_entry *);
 
-void pentry_inc_refcount(pentry_t *);
-void pentry_dec_refcount(pentry_t *);
+void pentry_inc_refcount(tpath_entry *);
+void pentry_dec_refcount(tpath_entry *);
+int pentry_get_refcount(tpath_entry *);
 
-char *pentry_get_path(pentry_t *);
-void pentry_set_path(pentry_t *, const char *);
+void pentry_set_path(tpath_entry *, const char *);
 
-void pentry_set_exclude(pentry_t *, int);
-int pentry_get_exclude(pentry_t *);
-
-int pentry_get_flag(pentry_t *);
-void pentry_set_flag(pentry_t *, int);
-
-int pentry_get_refcount(pentry_t *);
-
-char *pentry_type_to_str(filetype_t);
-filetype_t pentry_get_filetype(pentry_t *);
-void pentry_set_filetype(pentry_t *, filetype_t);
-
-void pentry_set_fd(pentry_t *, int);
-int pentry_get_fd(pentry_t *);
+char *tpath_entryype_to_str(filetype_t);
 
 /* return 0 on success, -1 on failure */
-int pentry_set_metadata(pentry_t *, dpl_dict_t *);
-dpl_dict_t *pentry_get_metadata(pentry_t *);
+int pentry_set_usermd(tpath_entry *, dpl_dict_t *);
 
 /* return 0 on success, -1 on failure */
-int pentry_set_digest(pentry_t *, const char *);
-char *pentry_get_digest(pentry_t *);
+int pentry_set_digest(tpath_entry *, const char *);
 
 
 #endif

@@ -1,6 +1,5 @@
 #include <assert.h>
 #include <pthread.h>
-#include <semaphore.h>
 #include <errno.h>
 #include <glib.h>
 
@@ -13,34 +12,10 @@
 extern GHashTable *hash;
 extern struct conf *conf;
 
-/* path entry on remote storage file system */
-struct pentry {
-        int fd;
-        char *path;
-        struct stat st;
-        char digest[MD5_DIGEST_LENGTH];
-        dpl_dict_t *metadata;
-        pthread_mutex_t md_mutex;
-        pthread_mutex_t mutex;
-        sem_t refcount;
-        int flag;
-        int exclude;
-        filetype_t filetype;
-        struct list *dirent;
-        int ondisk;
-        time_t atime, mtime, ctime;
-};
-
-size_t
-pentry_sizeof(void)
-{
-        return sizeof (struct pentry);
-}
-
-pentry_t *
+tpath_entry *
 pentry_new(void)
 {
-        pentry_t *pe = NULL;
+        tpath_entry *pe = NULL;
         pthread_mutexattr_t attr;
         pthread_mutexattr_t md_attr;
         int rc;
@@ -86,7 +61,7 @@ pentry_new(void)
                 goto release;
         }
 
-        pe->metadata = NULL;
+        pe->usermd = NULL;
         pe->ondisk = FILE_UNSET;
         pe->fd = -1;
         pe->dirent = NULL;
@@ -102,13 +77,13 @@ pentry_new(void)
 }
 
 void
-pentry_free(pentry_t *pe)
+pentry_free(tpath_entry *pe)
 {
         if (-1 != pe->fd)
                 close(pe->fd);
 
-        if (pe->metadata)
-                dpl_dict_free(pe->metadata);
+        if (pe->usermd)
+                dpl_dict_free(pe->usermd);
 
         if (pe->path)
                 free(pe->path);
@@ -119,57 +94,6 @@ pentry_free(pentry_t *pe)
         list_free(pe->dirent);
 
         free(pe);
-}
-
-void
-pentry_set_atime(pentry_t *pe,
-                 time_t atime)
-{
-        assert(pe);
-
-        pe->atime = atime;
-}
-
-time_t
-pentry_get_atime(pentry_t *pe)
-{
-        assert(pe);
-
-        return pe->atime;
-}
-
-void
-pentry_set_mtime(pentry_t *pe,
-                 time_t mtime)
-{
-        assert(pe);
-
-        pe->mtime = mtime;
-}
-
-time_t
-pentry_get_mtime(pentry_t *pe)
-{
-        assert(pe);
-
-        return pe->mtime;
-}
-
-void
-pentry_set_ctime(pentry_t *pe,
-                 time_t ctime)
-{
-        assert(pe);
-
-        pe->ctime = ctime;
-}
-
-time_t
-pentry_get_ctime(pentry_t *pe)
-{
-        assert(pe);
-
-        return pe->ctime;
 }
 
 char *
@@ -183,23 +107,6 @@ pentry_placeholder_to_str(int flag)
 
         assert(! "impossible case");
         return "invalid";
-}
-
-void
-pentry_set_placeholder(pentry_t *pe,
-                       int flag)
-{
-        assert(pe);
-
-        pe->ondisk = flag;
-}
-
-int
-pentry_get_placeholder(pentry_t *pe)
-{
-        assert(pe);
-
-        return pe->ondisk;
 }
 
 static int
@@ -216,7 +123,7 @@ cb_compare_path(void *p1,
 }
 
 int
-pentry_remove_dirent(pentry_t *pe,
+pentry_remove_dirent(tpath_entry *pe,
                      const char *path)
 {
         int ret;
@@ -243,14 +150,14 @@ pentry_remove_dirent(pentry_t *pe,
 }
 
 void
-pentry_add_dirent(pentry_t *pe,
+pentry_add_dirent(tpath_entry *pe,
                   const char *path)
 {
         char *key = NULL;
 
         assert(pe);
 
-        LOG(LOG_DEBUG, "path='%s', new entry: '%s'", pentry_get_path(pe), path);
+        LOG(LOG_DEBUG, "path='%s', new entry: '%s'", pe->path, path);
 
         key = strdup(path);
         if (! key)
@@ -259,16 +166,8 @@ pentry_add_dirent(pentry_t *pe,
                 pe->dirent = list_add(pe->dirent, key);
 }
 
-struct list *
-pentry_get_dirents(pentry_t *pe)
-{
-        assert(pe);
-
-        return pe->dirent;
-}
-
 void
-pentry_unlink_cache_file(pentry_t *pe)
+pentry_unlink_cache_file(tpath_entry *pe)
 {
         char *local = NULL;
 
@@ -284,7 +183,7 @@ pentry_unlink_cache_file(pentry_t *pe)
 }
 
 void
-pentry_inc_refcount(pentry_t *pe)
+pentry_inc_refcount(tpath_entry *pe)
 {
         assert(pe);
 
@@ -295,7 +194,7 @@ pentry_inc_refcount(pentry_t *pe)
 }
 
 void
-pentry_dec_refcount(pentry_t *pe)
+pentry_dec_refcount(tpath_entry *pe)
 {
         assert(pe);
 
@@ -306,7 +205,7 @@ pentry_dec_refcount(pentry_t *pe)
 }
 
 int
-pentry_get_refcount(pentry_t *pe)
+pentry_get_refcount(tpath_entry *pe)
 {
         assert(pe);
 
@@ -316,16 +215,8 @@ pentry_get_refcount(pentry_t *pe)
         return ret;
 }
 
-char *
-pentry_get_path(pentry_t *pe)
-{
-        assert(pe);
-
-        return pe->path;
-}
-
 void
-pentry_set_path(pentry_t *pe,
+pentry_set_path(tpath_entry *pe,
                 const char *path)
 {
         assert(pe);
@@ -343,25 +234,8 @@ pentry_set_path(pentry_t *pe,
                 LOG(LOG_CRIT, "strdup(%s): %s", path, strerror(errno));
 }
 
-void
-pentry_set_exclude(pentry_t *pe,
-                   int exclude)
-{
-        assert(pe);
-
-        pe->exclude = exclude;
-}
-
-int
-pentry_get_exclude(pentry_t *pe)
-{
-        assert(pe);
-
-        return pe->exclude;
-}
-
 static int
-pentry_gen_trylock(pentry_t *pe,
+pentry_gen_trylock(tpath_entry *pe,
                    pthread_mutex_t *lock)
 {
         int ret;
@@ -374,7 +248,7 @@ pentry_gen_trylock(pentry_t *pe,
 }
 
 static void
-pentry_gen_lock(pentry_t *pe,
+pentry_gen_lock(tpath_entry *pe,
                 pthread_mutex_t *lock)
 {
         int ret;
@@ -386,7 +260,7 @@ pentry_gen_lock(pentry_t *pe,
 }
 
 static void
-pentry_gen_unlock(pentry_t *pe,
+pentry_gen_unlock(tpath_entry *pe,
                   pthread_mutex_t *lock)
 {
         int ret;
@@ -398,7 +272,7 @@ pentry_gen_unlock(pentry_t *pe,
 }
 
 int
-pentry_trylock(pentry_t *pe)
+tpath_entryrylock(tpath_entry *pe)
 {
         assert(pe);
 
@@ -406,7 +280,7 @@ pentry_trylock(pentry_t *pe)
 }
 
 void
-pentry_lock(pentry_t *pe)
+pentry_lock(tpath_entry *pe)
 {
         assert(pe);
 
@@ -414,7 +288,7 @@ pentry_lock(pentry_t *pe)
 }
 
 void
-pentry_unlock(pentry_t *pe)
+pentry_unlock(tpath_entry *pe)
 {
         assert(pe);
 
@@ -422,7 +296,7 @@ pentry_unlock(pentry_t *pe)
 }
 
 int
-pentry_md_trylock(pentry_t *pe)
+pentry_md_trylock(tpath_entry *pe)
 {
         assert(pe);
 
@@ -430,7 +304,7 @@ pentry_md_trylock(pentry_t *pe)
 }
 
 void
-pentry_md_lock(pentry_t *pe)
+pentry_md_lock(tpath_entry *pe)
 {
         assert(pe);
 
@@ -438,83 +312,32 @@ pentry_md_lock(pentry_t *pe)
 }
 
 void
-pentry_md_unlock(pentry_t *pe)
+pentry_md_unlock(tpath_entry *pe)
 {
         assert(pe);
 
         pentry_gen_unlock(pe, &pe->md_mutex);
 }
 
-
-filetype_t
-pentry_get_filetype(pentry_t *pe)
-{
-        assert(pe);
-
-        return pe->filetype;
-}
-
-void
-pentry_set_filetype(pentry_t *pe,
-                    filetype_t type)
-{
-        assert(pe);
-
-        pe->filetype = type;
-}
-
-void
-pentry_set_fd(pentry_t *pe,
-              int fd)
-{
-        assert(pe);
-
-        pe->fd = fd;
-}
-
 int
-pentry_get_fd(pentry_t *pe)
-{
-        assert(pe);
-
-        return pe->fd;
-}
-
-int
-pentry_get_flag(pentry_t *pe)
-{
-        assert(pe);
-
-        return pe->flag;
-}
-
-void
-pentry_set_flag(pentry_t *pe, int flag)
-{
-        assert(pe);
-
-        pe->flag = flag;
-}
-
-int
-pentry_set_metadata(pentry_t *pe,
+pentry_set_usermd(tpath_entry *pe,
                     dpl_dict_t *dict)
 {
         int ret;
 
         assert(pe);
 
-        if (pe->metadata)
-                dpl_dict_free(pe->metadata);
+        if (pe->usermd)
+                dpl_dict_free(pe->usermd);
 
-        pe->metadata = dpl_dict_new(13);
-        if (! pe->metadata) {
+        pe->usermd = dpl_dict_new(13);
+        if (! pe->usermd) {
                 LOG(LOG_ERR, "dpl_dict_new: can't allocate memory");
                 ret = -1;
                 goto err;
         }
 
-        if (DPL_FAILURE == dpl_dict_copy(pe->metadata, dict)) {
+        if (DPL_FAILURE == dpl_dict_copy(pe->usermd, dict)) {
                 LOG(LOG_ERR, "dpl_dict_copy: failed");
                 ret = -1;
                 goto err;
@@ -525,16 +348,8 @@ pentry_set_metadata(pentry_t *pe,
         return ret;
 }
 
-dpl_dict_t *
-pentry_get_metadata(pentry_t *pe)
-{
-        assert(pe);
-
-        return pe->metadata;
-}
-
 int
-pentry_set_digest(pentry_t *pe,
+pentry_set_digest(tpath_entry *pe,
                   const char *digest)
 {
         assert(pe);
@@ -547,15 +362,7 @@ pentry_set_digest(pentry_t *pe,
 }
 
 char *
-pentry_get_digest(pentry_t *pe)
-{
-        assert(pe);
-
-        return pe->digest;
-}
-
-char *
-pentry_type_to_str(filetype_t type)
+tpath_entryype_to_str(filetype_t type)
 {
         switch (type) {
         case FILE_REG: return "regular file";
@@ -569,9 +376,9 @@ static void
 print(void *key, void *data, void *user_data)
 {
         char *path = key;
-        pentry_t *pe = data;
+        tpath_entry *pe = data;
         LOG(LOG_DEBUG, "key=%s, path=%s, fd=%d, type=%s, digest=%.*s",
-            path, pe->path, pe->fd, pentry_type_to_str(pe->filetype),
+            path, pe->path, pe->fd, tpath_entryype_to_str(pe->filetype),
             MD5_DIGEST_LENGTH, pe->digest);
 }
 

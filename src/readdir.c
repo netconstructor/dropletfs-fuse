@@ -20,7 +20,7 @@ dfs_readdir(const char *path,
         void *dir_hdl;
         dpl_dirent_t dirent;
         dpl_status_t rc = DPL_FAILURE;
-        pentry_t *pe = NULL;
+        tpath_entry *pe = NULL;
         int ret;
 
         LOG(LOG_DEBUG, "path=%s, data=%p, fill=%p, offset=%lld, info=%p",

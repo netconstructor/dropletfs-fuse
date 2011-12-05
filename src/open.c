@@ -8,6 +8,7 @@
 #include "glob.h"
 #include "file.h"
 #include "tmpstr.h"
+#include "cred.h"
 
 extern GHashTable *hash;
 extern struct conf *conf;
@@ -30,11 +31,11 @@ static int open_flags[] = {
 static int
 populate_hash(GHashTable *h,
               const char * const path,
-              pentry_t **pep)
+              tpath_entry **pep)
 {
         int ret;
         char *key = NULL;
-        pentry_t *pe = NULL;
+        tpath_entry *pe = NULL;
 
         if (! pep) {
                 ret = -1;
@@ -47,7 +48,7 @@ populate_hash(GHashTable *h,
                 goto err;
         }
 
-        pentry_set_fd(pe, -1);
+        pe->fd = -1;
         pentry_set_path(pe, path);
         key = strdup(path);
         if (! key) {
@@ -115,7 +116,7 @@ get_mode_from_flags(int flags)
 
 static int
 open_creat(const char * const path,
-           pentry_t *pe,
+           tpath_entry *pe,
            int flags)
 {
         int ret;
@@ -138,8 +139,8 @@ open_creat(const char * const path,
                 ret = -1;
                 goto err;
         }
-        pentry_set_fd(pe, fd);
-        pentry_set_flag(pe, FLAG_DIRTY);
+        pe->fd = fd;
+        pe->flag = FLAG_DIRTY;
 
         ret = 0;
   err:
@@ -148,24 +149,19 @@ open_creat(const char * const path,
 
 static int
 open_existing(const char * const path,
-              pentry_t *pe,
+              tpath_entry *pe,
               int flags)
 {
         int ret;
-        int fd;
-
-        /* get the fd of the file we want to read */
-        fd = pentry_get_fd(pe);
 
         /* negative fd? then we don't have any cache file, get it! */
-        if (fd < 0) {
-                (void)build_cache_tree(path);
-                fd = dfs_get_local_copy(pe, path, flags);
-                if (-1 == fd) {
+        if (pe->fd < 0) {
+                (void) build_cache_tree(path);
+                pe->fd = dfs_get_local_copy(pe, path, flags);
+                if (-1 == pe->fd) {
                         ret = -1;
                         goto err;
                 }
-                pentry_set_fd(pe, fd);
         }
 
         ret = 0;
@@ -175,7 +171,7 @@ open_existing(const char * const path,
 
 static int
 open_rdonly(const char * const path,
-            pentry_t *pe,
+            tpath_entry *pe,
             int flags)
 {
         return open_existing(path, pe, flags);
@@ -183,21 +179,21 @@ open_rdonly(const char * const path,
 
 static int
 open_wronly(const char * const path,
-            pentry_t *pe,
+            tpath_entry *pe,
             int flags)
 {
         int ret;
 
         ret = open_existing(path, pe, flags);
         if (0 == ret)
-                pentry_set_flag(pe, FLAG_DIRTY);
+                pe->flag = FLAG_DIRTY;
 
         return ret;
 }
 
 static int
 open_rdwr(const char * const path,
-          pentry_t *pe,
+          tpath_entry *pe,
           int flags)
 {
         return open_wronly(path, pe, flags);
@@ -207,10 +203,10 @@ int
 dfs_open(const char *path,
          struct fuse_file_info *info)
 {
-        pentry_t *pe = NULL;
-        int fd = -1;
+        tpath_entry *pe = NULL;
         int ret = -1;
-        enum state_mode mode;
+        enum state_mode smode;
+        dpl_dict_t *usermd;
 
         info->fh = 0;
         LOG(LOG_DEBUG, "path=%s %s 0%o",
@@ -225,39 +221,39 @@ dfs_open(const char *path,
                 }
                 LOG(LOG_INFO, "adding file '%s' to the hashtable", path);
         } else {
-                fd = pentry_get_fd(pe);
-                if (FILE_LOCAL == pentry_get_placeholder(pe))
+                if (FILE_LOCAL == pe->ondisk)
                         LOG(LOG_INFO, "%s: found in the hashtable, and the "
-                            "file is on disk (fd=%d)", path, fd);
+                            "file is on disk (fd=%d)", path, pe->fd);
                 else
                         LOG(LOG_INFO, "%s: found in hashtable, but the file "
-                            "isn't downloaded (fd=%d)", path, fd);
+                            "isn't downloaded (fd=%d)", path, pe->fd);
         }
 
         info->fh = (uint64_t)pe;
         pentry_inc_refcount(pe);
 
         mode = get_mode_from_flags(info->flags);
+        smode = get_mode_from_flags(info->flags);
 
         info->fh = (uint64_t)pe;
-        LOG(LOG_DEBUG, "path=%s, MODE=%d", path, mode);
+        LOG(LOG_DEBUG, "path=%s, MODE=%d", path, smode);
 
-        int (*fn[])(const char *, pentry_t *, int) = {
+        int (*fn[])(const char *, tpath_entry *, int) = {
                 [MODE_RDONLY] = open_rdonly,
                 [MODE_WRONLY] = open_wronly,
                 [MODE_RDWR]   = open_rdwr,
                 [MODE_CREAT]  = open_creat,
         };
 
-        if (-1 == fn[mode](path, pe, open_flags[mode])) {
+        if (-1 == fn[smode](path, pe, open_flags[smode])) {
                 ret = -1;
                 goto err;
         }
 
-        pentry_set_placeholder(pe, FILE_LOCAL);
+        pe->ondisk = FILE_LOCAL;
         ret = 0;
   err:
         LOG(LOG_DEBUG, "@pentry=%p, fd=%d, flags=0x%X, ret=%d",
-            pe, pentry_get_fd(pe), info->flags, ret);
+            pe, pe->fd, info->flags, ret);
         return ret;
 }

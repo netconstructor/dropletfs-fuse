@@ -18,12 +18,10 @@ dfs_chown(const char *path,
           uid_t uid,
           gid_t gid)
 {
-        dpl_dict_t *metadata = NULL;
         dpl_status_t rc;
         int ret;
-        pentry_t *pe = NULL;
+        tpath_entry *pe = NULL;
         time_t now;
-        int fd = -1;
 
         LOG(LOG_DEBUG, "%s, uid=%lu, gid=%lu",
             path, (unsigned long)uid, (unsigned long)gid);
@@ -35,31 +33,30 @@ dfs_chown(const char *path,
                 goto err;
         }
 
-        metadata = pentry_get_metadata(pe);
-
-        assert(NULL != metadata);
+        assert(NULL != pe->usermd);
 
         now = time(NULL);
-        assign_meta_to_dict(metadata, "mtime", (unsigned long)now);
-        assign_meta_to_dict(metadata, "ctime", (unsigned long)now);
+        assign_meta_to_dict(pe->usermd, "mtime", (unsigned long) now);
+        assign_meta_to_dict(pe->usermd, "ctime", (unsigned long) now);
 
-        assign_meta_to_dict(metadata, "uid", (unsigned long)uid);
-        assign_meta_to_dict(metadata, "gid", (unsigned long)gid);
+        assign_meta_to_dict(pe->usermd, "uid", (unsigned long) uid);
+        assign_meta_to_dict(pe->usermd, "gid", (unsigned long) gid);
 
-        fd = pentry_get_fd(pe);
-        if (-1 != fd && FILE_LOCAL == pentry_get_placeholder(pe)) {
+        if (-1 != pe->fd && FILE_LOCAL == pe->ondisk) {
                 /* change the cache file info */
-                if (-1 == fchown(fd, uid, gid)) {
+                if (-1 == fchown(pe->fd, uid, gid)) {
                         if (EPERM != errno) {
-                                LOG(LOG_ERR, "fchown(fd=%d, uid=%d, gid=%d): %s (%d)",
-                                    fd, (int) uid, (int) gid, strerror(errno), errno);
+                                LOG(LOG_ERR,
+                                    "fchown(fd=%d, uid=%d, gid=%d): %s (%d)",
+                                    pe->fd, (int) uid, (int) gid,
+                                    strerror(errno), errno);
                                 ret = -1;
                                 goto err;
                         }
                 }
         }
 
-        rc = dfs_setattr_timeout(ctx, path, metadata);
+        rc = dfs_setattr_timeout(ctx, path, pe->usermd);
         if (DPL_SUCCESS != rc) {
                 LOG(LOG_ERR, "dpl_setattr: %s", dpl_status_str(rc));
                 ret = -1;

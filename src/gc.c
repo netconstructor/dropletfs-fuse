@@ -20,8 +20,7 @@ gc_callback(gpointer key,
 {
         GHashTable *hash = user_data;
         char *path = key;
-        pentry_t *pe = value;
-        int fd;
+        tpath_entry *pe = value;
         struct stat st;
         time_t t;
         char *local = NULL;
@@ -35,29 +34,22 @@ gc_callback(gpointer key,
                 /* open (either r or rw), don't touch this cell */
                 return;
 
-        if (pentry_trylock(pe))
+        if (tpath_entryrylock(pe))
                 return;
 
-        fd = pentry_get_fd(pe);
-        if (-1 == fd)
-                /* nothing to do, the pentry_t cell is allocated but no
+        if (-1 == pe->fd)
+                /* nothing to do, the tpath_entry cell is allocated but no
                  * file descriptor/path is affected now
                  */
                 goto release;
 
-        if (fd < 0)  {
-                /* negative but not -1? it's an error*/
-                LOG(LOG_ERR, "bad file descriptor (%d), remove the cell!", fd);
-                goto remove;
-        }
-
-        if (-1 == fstat(fd, &st)) {
+        if (-1 == fstat(pe->fd, &st)) {
                 LOG(LOG_ERR, "fstat(fd=%d, %p): %s, remove the cell",
-                    fd, (void *)&st, strerror(errno));
+                    pe->fd, (void *) &st, strerror(errno));
                 goto remove;
         }
 
-        if (pentry_get_exclude(pe))
+        if (pe->exclude)
                 threshold *= 10;
 
         t = time(NULL);

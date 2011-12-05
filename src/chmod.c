@@ -16,12 +16,10 @@ int
 dfs_chmod(const char *path,
           mode_t mode)
 {
-        dpl_dict_t *metadata = NULL;
         dpl_status_t rc;
         int ret;
-        pentry_t *pe = NULL;
+        tpath_entry *pe = NULL;
         time_t now;
-        int fd = -1;
 
         LOG(LOG_DEBUG, "%s", path);
 
@@ -32,22 +30,19 @@ dfs_chmod(const char *path,
                 goto err;
         }
 
-        metadata = pentry_get_metadata(pe);
-
-        assert(NULL != metadata);
+        assert(NULL != pe->usermd);
 
         now = time(NULL);
-        assign_meta_to_dict(metadata, "mode", (unsigned long)mode);
-        assign_meta_to_dict(metadata, "mtime", (unsigned long)now);
-        assign_meta_to_dict(metadata, "ctime", (unsigned long)now);
+        assign_meta_to_dict(pe->usermd, "mode", (unsigned long)mode);
+        assign_meta_to_dict(pe->usermd, "mtime", (unsigned long)now);
+        assign_meta_to_dict(pe->usermd, "ctime", (unsigned long)now);
 
-        fd = pentry_get_fd(pe);
-        if (-1 != fd && FILE_LOCAL == pentry_get_placeholder(pe)) {
+        if (-1 != pe->fd && FILE_LOCAL == pe->ondisk) {
                 /* change the cache file info */
-                if (-1 == fchmod(fd, mode)) {
+                if (-1 == fchmod(pe->fd, mode)) {
                         if (EPERM != errno) {
                                 LOG(LOG_ERR, "fchmod(fd=%d, mode=%d): %s (%d)",
-                                    fd, (int) mode, strerror(errno), errno);
+                                    pe->fd, (int) mode, strerror(errno), errno);
                                 ret = -1;
                                 goto err;
                         }
@@ -55,7 +50,7 @@ dfs_chmod(const char *path,
         }
 
         /* update metadata on the cloud */
-        rc = dfs_setattr_timeout(ctx, path, metadata);
+        rc = dfs_setattr_timeout(ctx, path, pe->usermd);
         if (DPL_SUCCESS != rc) {
                 LOG(LOG_ERR, "dpl_setattr: %s", dpl_status_str(rc));
                 ret = -1;

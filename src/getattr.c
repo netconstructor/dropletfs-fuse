@@ -44,15 +44,15 @@ set_default_stat(struct stat *st,
 }
 
 static void
-set_filetype_from_stat(pentry_t *pe,
+set_filetype_from_stat(tpath_entry *pe,
                        struct stat *st)
 {
         if (st->st_mode | S_IFREG)
-                pentry_set_filetype(pe, FILE_REG);
+                pe->filetype = FILE_REG;
         else if (st->st_mode | S_IFDIR)
-                pentry_set_filetype(pe, FILE_DIR);
+                pe->filetype = FILE_DIR;
         else if (st->st_mode | S_IFLNK)
-                pentry_set_filetype(pe, FILE_SYMLINK);
+                pe->filetype = FILE_SYMLINK;
 }
 
 static int
@@ -62,7 +62,7 @@ hash_fill_dirent(GHashTable *hash,
         char *dirname = NULL;
         char *p = NULL;
         int ret;
-        pentry_t *dir = NULL;
+        tpath_entry *dir = NULL;
 
         dirname = (char *)path;
         p = strrchr(dirname, '/');
@@ -97,25 +97,23 @@ hash_fill_dirent(GHashTable *hash,
 
 
 static int
-getattr_remote(pentry_t *pe,
+getattr_remote(tpath_entry *pe,
               const char *path,
               struct stat *st)
 {
         int ret;
-        dpl_dict_t *meta = NULL;
 
         LOG(LOG_DEBUG, "%s: get remote metadata through hashtable", path);
 
         pentry_md_lock(pe);
 
-        meta = pentry_get_metadata(pe);
-        if (! meta) {
+        if (! pe->usermd) {
                 LOG(LOG_ERR, "%s: no metadata found in hashtable", path);
                 ret = -1;
                 goto err;
         }
 
-        fill_stat_from_metadata(st, meta);
+        fill_stat_from_metadata(st, pe->usermd);
 
         pentry_md_unlock(pe);
 
@@ -125,28 +123,23 @@ getattr_remote(pentry_t *pe,
 }
 
 static int
-getattr_local(pentry_t *pe,
+getattr_local(tpath_entry *pe,
               const char *path,
               struct stat *st)
 {
-        int fd;
         int ret;
-        int exclude;
 
-        exclude = pentry_get_exclude(pe);
-        fd = pentry_get_fd(pe);
+        LOG(LOG_DEBUG, "%s: get local metadata through fstat(fd=%d)", path, pe->fd);
 
-        LOG(LOG_DEBUG, "%s: get local metadata through fstat(fd=%d)", path, fd);
-
-        if (fd < 0) {
-                LOG(LOG_ERR, "path=%s: invalid fd=%d", path, fd);
+        if (pe->fd < 0) {
+                LOG(LOG_ERR, "path=%s: invalid fd=%d", path, pe->fd);
                 ret = -1;
                 goto err;
         }
 
-        if (-1 == fstat(fd, st)) {
+        if (-1 == fstat(pe->fd, st)) {
                 LOG(LOG_ERR, "path=%s: fstat(fd=%d, ...): %s",
-                    path, fd, strerror(errno));
+                    path, pe->fd, strerror(errno));
                 ret = -1;
                 goto err;
         }
@@ -157,7 +150,7 @@ getattr_local(pentry_t *pe,
 }
 
 static int
-getattr_unset(pentry_t *pe,
+getattr_unset(tpath_entry *pe,
               const char *path,
               struct stat *st)
 {
@@ -234,9 +227,9 @@ getattr_unset(pentry_t *pe,
         }
 
         pentry_md_lock(pe);
-        pentry_set_metadata(pe, dict);
+        pentry_set_usermd(pe, dict);
         set_filetype_from_stat(pe, st);
-        pentry_set_placeholder(pe, FILE_REMOTE);
+        pe->ondisk = FILE_REMOTE;
         pentry_md_unlock(pe);
 
         (void)hash_fill_dirent(hash, path);
@@ -258,7 +251,7 @@ int
 dfs_getattr(const char *path,
             struct stat *st)
 {
-        pentry_t *pe = NULL;
+        tpath_entry *pe = NULL;
         int ret;
         char *key = NULL;
 
@@ -298,14 +291,14 @@ dfs_getattr(const char *path,
                 g_hash_table_insert(hash, key, pe);
         }
 
-        int (*cb[]) (pentry_t *, const char *, struct stat *) = {
+        int (*cb[]) (tpath_entry *, const char *, struct stat *) = {
                 [FILE_REMOTE] = getattr_remote,
                 [FILE_LOCAL]  = getattr_local,
                 [FILE_UNSET]  = getattr_unset,
         };
 
-        ret = cb[pentry_get_placeholder(pe)](pe, path, st);
-        pentry_set_atime(pe, time(NULL));
+        ret = cb[pe->ondisk](pe, path, st);
+        pe->atime = time(NULL);
 
         LOG(LOG_DEBUG, "size=%d gid=%d uid=%d", (int) st->st_size, (int) st->st_gid, (int) st->st_uid);
   end:

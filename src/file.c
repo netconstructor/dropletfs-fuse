@@ -193,22 +193,14 @@ download_headers(char * path,
 }
 
 static int
-compare_digests(pentry_t *pe,
+compare_digests(tpath_entry *pe,
                 dpl_dict_t *dict)
 {
         char *remote = NULL;
         int ret;
-        char *digest = NULL;
 
-        if (FILE_LOCAL != pentry_get_placeholder(pe)) {
+        if (FILE_LOCAL != pe->ondisk) {
                 LOG(LOG_DEBUG, "no local file");
-                ret = -1;
-                goto err;
-        }
-
-        digest = pentry_get_digest(pe);
-        if (! digest) {
-                LOG(LOG_NOTICE, "no digest");
                 ret = -1;
                 goto err;
         }
@@ -218,13 +210,13 @@ compare_digests(pentry_t *pe,
         remote = dpl_dict_get_value(dict, "etag");
         if (remote) {
                 LOG(LOG_DEBUG, "remote md5=%s", remote);
-                LOG(LOG_DEBUG, "local md5=\"%.*s\"", MD5_DIGEST_LENGTH, digest);
-                if (0 == memcmp(digest, remote, MD5_DIGEST_LENGTH)) {
+                LOG(LOG_DEBUG, "local md5=\"%.*s\"", MD5_DIGEST_LENGTH, pe->digest);
+                if (0 == memcmp(pe->digest, remote, MD5_DIGEST_LENGTH)) {
                         ret = 0;
                 } else {
-                        pentry_set_digest(pe, remote);
+                        memcpy(pe->digest, remote, sizeof pe->digest);
                         LOG(LOG_DEBUG, "updated local md5=\"%.*s\"",
-                            MD5_DIGEST_LENGTH, pentry_get_digest(pe));
+                            MD5_DIGEST_LENGTH, pe->digest);
                 }
         }
 
@@ -331,7 +323,7 @@ handle_compression(const char *remote,
 
 /* TODO: code a proper permission mechanism */
 static int
-check_permissions(pentry_t *pe,
+check_permissions(tpath_entry *pe,
                   dpl_dict_t *metadata)
 {
         return 0;
@@ -370,7 +362,7 @@ check_encryption_flag(dpl_dict_t *metadata)
 
 /* return the fd of a local copy, to operate on */
 int
-dfs_get_local_copy(pentry_t *pe,
+dfs_get_local_copy(tpath_entry *pe,
                    const char * const remote,
                    int flags)
 {
@@ -411,7 +403,7 @@ dfs_get_local_copy(pentry_t *pe,
                 goto end;
         }
 
-        if (-1 == pentry_set_metadata(pe, metadata)) {
+        if (-1 == pentry_set_usermd(pe, metadata)) {
                 LOG(LOG_ERR, "can't update metadata");
                 fd = -1;
                 goto end;
@@ -427,7 +419,7 @@ dfs_get_local_copy(pentry_t *pe,
          * it again, just return the (open) file descriptor of the cache file
          */
         if (0 == compare_digests(pe, headers))  {
-                fd = pentry_get_fd(pe);
+                fd = pe->fd;
                 goto end;
         }
 

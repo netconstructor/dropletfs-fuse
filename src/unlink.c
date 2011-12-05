@@ -19,10 +19,10 @@ dfs_unlink(const char *path)
 {
         dpl_status_t rc = DPL_FAILURE;
         char *local = NULL;
-        pentry_t *pe = NULL;
+        tpath_entry *pe = NULL;
         int ret;
         char *p = NULL;
-        pentry_t *pe_dir = NULL;
+        tpath_entry *pe_dir = NULL;
         char *dirname = NULL;
 
         LOG(LOG_DEBUG, "path=%s", path);

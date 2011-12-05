@@ -14,7 +14,7 @@ dfs_rmdir(const char *path)
 {
         dpl_status_t rc = DPL_FAILURE;
         int ret;
-        pentry_t *pe = NULL;
+        tpath_entry *pe = NULL;
 
         LOG(LOG_DEBUG, "path=%s", path);
 

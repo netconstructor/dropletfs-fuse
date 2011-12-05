@@ -15,7 +15,7 @@ dfs_opendir(const char *path,
             struct fuse_file_info *info)
 {
         dpl_status_t rc = DPL_FAILURE;
-        pentry_t *pe = NULL;
+        tpath_entry *pe = NULL;
         int ret;
         char *key = NULL;
 
@@ -37,7 +37,7 @@ dfs_opendir(const char *path,
                         goto err;
                 }
                 pentry_set_path(pe, path);
-                pentry_set_filetype(pe, FILE_DIR);
+                pe->filetype =FILE_DIR;
                 key = strdup(path);
                 if (! key) {
                         LOG(LOG_ERR, "%s: strdup: %s", path, strerror(errno));

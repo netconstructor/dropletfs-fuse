@@ -82,7 +82,7 @@ int
 dfs_release(const char *path,
             struct fuse_file_info *info)
 {
-        pentry_t *pe = NULL;
+        tpath_entry *pe = NULL;
         dpl_canned_acl_t canned_acl = DPL_CANNED_ACL_PRIVATE;
         dpl_vfile_t *vfile = NULL;
         dpl_status_t rc = DPL_FAILURE;
@@ -91,7 +91,6 @@ dfs_release(const char *path,
         int ret = -1;
         size_t size = 0;
         size_t zsize = 0;
-        int fd = -1;
         int zfd = -1;
         int fd_tosend;
         char *local = NULL;
@@ -102,23 +101,19 @@ dfs_release(const char *path,
 
         LOG(LOG_DEBUG, "path=%s, %s", path, flags_to_str(info->flags));
 
-        pe = (pentry_t *)info->fh;
+        pe = (tpath_entry *)info->fh;
         if (! pe) {
                 LOG(LOG_ERR, "no path entry");
                 goto err;
         }
 
-        fd = pentry_get_fd(pe);
-
-        if (fd < 0) {
-                LOG(LOG_ERR, "unusable file descriptor fd=%d", fd);
+        if (pe->fd < 0) {
+                LOG(LOG_ERR, "unusable file descriptor fd=%d", pe->fd);
                 goto err;
         }
 
-        LOG(LOG_DEBUG, "%s, fd=%d", path, fd);
-
-        if (-1 == fstat(fd, &st)) {
-                LOG(LOG_ERR, "fstat(fd=%d) = %s", fd, strerror(errno));
+        if (-1 == fstat(pe->fd, &st)) {
+                LOG(LOG_ERR, "fstat(fd=%d) = %s", pe->fd, strerror(errno));
                 goto err;
         }
 
@@ -128,12 +123,12 @@ dfs_release(const char *path,
          * it was for read-only purposes */
         if (O_RDONLY == (info->flags & O_ACCMODE)) {
                 LOG(LOG_INFO, "path=%s, fd=%d was opened in O_RDONLY mode",
-                    pentry_get_path(pe), fd);
+                    pe->path, pe->fd);
                 ret = 0;
                 goto end;
         }
 
-        if (pentry_get_exclude(pe)) {
+        if (pe->exclude) {
                 LOG(LOG_INFO, "%s: matches a -x regex, don't upload", path);
                 ret = 0;
                 goto exc;
@@ -149,7 +144,7 @@ dfs_release(const char *path,
         }
 
         fill_metadata_from_stat(dict, &st);
-        fd_tosend = fd;
+        fd_tosend = pe->fd;
 
         local = tmpstr_printf("%s/%s", conf->cache_dir, path);
 
@@ -225,9 +220,9 @@ dfs_release(const char *path,
         if (fpsrc)
                 fclose(fpsrc);
 
-        if (-1 == lseek(fd, 0, SEEK_SET))
+        if (-1 == lseek(pe->fd, 0, SEEK_SET))
                 LOG(LOG_ERR, "lseek(fd=%d, 0, SEEK_SET): %s",
-                    fd, strerror(errno));
+                    pe->fd, strerror(errno));
 
         if (fpdst)
                 fclose(fpdst);
@@ -240,8 +235,8 @@ dfs_release(const char *path,
 
   exc:
         if (pe) {
-                pentry_set_flag(pe, FLAG_CLEAN);
-                (void)pentry_unlock(pe);
+                pe->flag = FLAG_CLEAN;
+                (void) pentry_unlock(pe);
         }
 
   end:

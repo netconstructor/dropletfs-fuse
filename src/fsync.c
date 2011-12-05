@@ -13,8 +13,7 @@ dfs_fsync(const char *path,
           int issync,
           struct fuse_file_info *info)
 {
-        struct pentry *pe = NULL;
-        int fd = -1;
+        tpath_entry *pe = NULL;
         int ret;
 
         LOG(LOG_DEBUG, "%s", path);
@@ -26,9 +25,8 @@ dfs_fsync(const char *path,
                 goto end;
         }
 
-        fd = pentry_get_fd(pe);
-        if (fd < 0) {
-                LOG(LOG_ERR, "unusable file descriptor: %d", fd);
+        if (-1 == pe->fd) {
+                LOG(LOG_ERR, "unusable file descriptor: %d", pe->fd);
                 ret = -1;
                 goto end;
         }
@@ -36,8 +34,8 @@ dfs_fsync(const char *path,
         if (issync)
                 goto end;
 
-        if (-1 == fsync(fd)) {
-                LOG(LOG_ERR, "fsync: %s", strerror(errno));
+        if (-1 == fsync(pe->fd)) {
+                LOG(LOG_ERR, "fsync(fd=%d): %s", pe->fd, strerror(errno));
                 ret = -errno;
                 goto end;
         }

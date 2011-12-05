@@ -23,10 +23,9 @@ dfs_create(const char *path,
         dpl_ino_t ino, obj, parent;
         int ret = -1;
         dpl_status_t rc = DPL_FAILURE;
-        struct pentry *pe = NULL;
+        tpath_entry *pe = NULL;
         struct stat st;
-        int fd = -1;
-        dpl_dict_t *meta = NULL;
+        dpl_dict_t *usermd = NULL;
         int exclude;
 
         LOG(LOG_DEBUG, "%s, mode=0x%x, %s",
@@ -59,42 +58,39 @@ dfs_create(const char *path,
 
         (void)dfs_open(path, info);
 
-        pe = (pentry_t *)info->fh;
+        pe = (tpath_entry *) info->fh;
         if (! pe) {
                 ret = -1;
                 goto err;
         }
 
-        pentry_set_exclude(pe, exclude);
+        pe->exclude = exclude;
 
-        fd = pentry_get_fd(pe);
-        if (-1 == fd) {
+        if (-1 == pe->fd) {
                 ret = -1;
                 goto err;
         }
 
-        if (-1 == fstat(fd, &st)) {
+        if (-1 == fstat(pe->fd, &st)) {
                 LOG(LOG_ERR, "fstat: %s", strerror(errno));
                 ret = -errno;
                 goto err;
         }
 
-        fchmod(fd, mode);
+        fchmod(pe->fd, mode);
 
-        meta = pentry_get_metadata(pe);
-
-        if (! meta) {
-                meta = dpl_dict_new(13);
-                if (! meta) {
+        if (! pe->usermd) {
+                pe->usermd = dpl_dict_new(13);
+                if (! pe->usermd) {
                         LOG(LOG_ERR, "allocation failure");
                         ret = -1;
                         goto err;
                 }
         }
 
-        fill_metadata_from_stat(meta, &st);
-        assign_meta_to_dict(meta, "mode", (unsigned long)mode);
-        pentry_set_metadata(pe, meta);
+        fill_metadata_from_stat(usermd, &st);
+        assign_meta_to_dict(usermd, "mode", (unsigned long) mode);
+        pentry_set_usermd(pe, usermd);
 
         if (! exclude) {
                 rc = dfs_mknod_timeout(ctx, path);
@@ -107,8 +103,8 @@ dfs_create(const char *path,
 
         ret = 0;
   err:
-        if (meta)
-                dpl_dict_free(meta);
+        if (usermd)
+                dpl_dict_free(usermd);
 
         LOG(LOG_DEBUG, "path=%s ret=%s", path, dpl_status_str(ret));
         return ret;

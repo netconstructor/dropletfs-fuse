@@ -13,23 +13,21 @@ dfs_write(const char *path,
           off_t offset,
           struct fuse_file_info *info)
 {
-        pentry_t *pe = NULL;
+        tpath_entry *pe = NULL;
         int ret = 0;
-        int fd = -1;
 
         LOG(LOG_DEBUG, "path=%s, buf=%p, size=%zu, offset=%lld, info=%p",
             path, (void *)buf, size, (long long)offset, (void *)info);
 
-        pe = (pentry_t *)info->fh;
+        pe = (tpath_entry *)info->fh;
 
-        fd = pentry_get_fd(pe);
-        if (fd < 0) {
-                LOG(LOG_ERR, "unusable file descriptor fd=%d", fd);
+        if (pe->fd < 0) {
+                LOG(LOG_ERR, "unusable file descriptor fd=%d", pe->fd);
                 ret = EBADF;
                 goto err;
         }
 
-        ret = pwrite(fd, buf, size, offset);
+        ret = pwrite(pe->fd, buf, size, offset);
         if (-1 == ret) {
                 LOG(LOG_ERR, "pwrite: %s", strerror(errno));
                 ret = -errno;

@@ -166,11 +166,11 @@ cb_hash_unlink(gpointer key,
 {
         (void)key;
         (void)user_data;
-        pentry_t *pe = value;
+        tpath_entry *pe = value;
 
         if (pe) {
-                if (FILE_LOCAL == pentry_get_placeholder(pe)) {
-                        LOG(LOG_INFO, "remove cache file '%s'", pentry_get_path(pe));
+                if (FILE_LOCAL == pe->ondisk) {
+                        LOG(LOG_INFO, "remove cache file '%s'", pe->path);
                         pentry_unlink_cache_file(pe);
                 }
         }

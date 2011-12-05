@@ -22,7 +22,7 @@ rename_file(const char *oldpath,
         dpl_status_t rc;
         char *p = NULL;
         char *dirname = NULL;
-        pentry_t *pe_dir = NULL;
+        tpath_entry *pe_dir = NULL;
 
         LOG(LOG_DEBUG, "%s -> %s", oldpath, newpath);
 
