@@ -57,7 +57,7 @@ dfs_chown(const char *path,
         }
 
         rc = dfs_setattr_timeout(ctx, path, pe->usermd);
-        if (DPL_SUCCESS != rc) {
+        if (DPL_SUCCESS != rc && DPL_EISDIR != rc) {
                 LOG(LOG_ERR, "dpl_setattr: %s", dpl_status_str(rc));
                 ret = -1;
                 goto err;
