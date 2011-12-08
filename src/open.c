@@ -8,7 +8,6 @@
 #include "glob.h"
 #include "file.h"
 #include "tmpstr.h"
-#include "cred.h"
 
 extern GHashTable *hash;
 extern struct conf *conf;
@@ -232,7 +231,6 @@ dfs_open(const char *path,
         info->fh = (uint64_t)pe;
         pentry_inc_refcount(pe);
 
-        mode = get_mode_from_flags(info->flags);
         smode = get_mode_from_flags(info->flags);
 
         info->fh = (uint64_t)pe;

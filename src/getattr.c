@@ -201,8 +201,6 @@ getattr_unset(tpath_entry *pe,
                 goto end;
         }
 
-        set_default_stat(st, type);
-
         /* we  might have not any "size" usermd, because the object was
          * put with another application; so we rely on the "content-length"
          * header */
