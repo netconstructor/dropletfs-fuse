@@ -33,9 +33,12 @@ dfs_chmod(const char *path,
         assert(NULL != pe->usermd);
 
         now = time(NULL);
+
+        pentry_md_lock(pe);
         assign_meta_to_dict(pe->usermd, "mode", (unsigned long)mode);
         assign_meta_to_dict(pe->usermd, "mtime", (unsigned long)now);
         assign_meta_to_dict(pe->usermd, "ctime", (unsigned long)now);
+        pentry_md_unlock(pe);
 
         if (-1 != pe->fd && FILE_LOCAL == pe->ondisk) {
                 /* change the cache file info */
