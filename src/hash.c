@@ -321,7 +321,7 @@ pentry_md_unlock(tpath_entry *pe)
 
 int
 pentry_set_usermd(tpath_entry *pe,
-                    dpl_dict_t *dict)
+                  dpl_dict_t *dict)
 {
         int ret;
 

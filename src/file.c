@@ -403,11 +403,14 @@ dfs_get_local_copy(tpath_entry *pe,
                 goto end;
         }
 
+        pentry_md_lock(pe);
         if (-1 == pentry_set_usermd(pe, metadata)) {
                 LOG(LOG_ERR, "can't update metadata");
                 fd = -1;
+                pentry_md_unlock(pe);
                 goto end;
         }
+        pentry_md_unlock(pe);
 
         if (-1 == check_permissions(pe, metadata)) {
                 LOG(LOG_NOTICE, "permission denied");

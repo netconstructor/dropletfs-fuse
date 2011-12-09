@@ -90,7 +90,10 @@ dfs_create(const char *path,
 
         fill_metadata_from_stat(usermd, &st);
         assign_meta_to_dict(usermd, "mode", (unsigned long) mode);
+
+        pentry_md_lock(pe);
         pentry_set_usermd(pe, usermd);
+        pentry_md_unlock(pe);
 
         if (! exclude) {
                 rc = dfs_mknod_timeout(ctx, path);
