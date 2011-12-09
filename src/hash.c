@@ -272,7 +272,7 @@ pentry_gen_unlock(tpath_entry *pe,
 }
 
 int
-tpath_entryrylock(tpath_entry *pe)
+pentry_trylock(tpath_entry *pe)
 {
         assert(pe);
 
@@ -362,7 +362,7 @@ pentry_set_digest(tpath_entry *pe,
 }
 
 char *
-tpath_entryype_to_str(filetype_t type)
+pentry_type_to_str(filetype_t type)
 {
         switch (type) {
         case FILE_REG: return "regular file";
@@ -378,7 +378,7 @@ print(void *key, void *data, void *user_data)
         char *path = key;
         tpath_entry *pe = data;
         LOG(LOG_DEBUG, "key=%s, path=%s, fd=%d, type=%s, digest=%.*s",
-            path, pe->path, pe->fd, tpath_entryype_to_str(pe->filetype),
+            path, pe->path, pe->fd, pentry_type_to_str(pe->filetype),
             MD5_DIGEST_LENGTH, pe->digest);
 }
 

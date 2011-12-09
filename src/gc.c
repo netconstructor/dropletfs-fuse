@@ -34,7 +34,7 @@ gc_callback(gpointer key,
                 /* open (either r or rw), don't touch this cell */
                 return;
 
-        if (tpath_entryrylock(pe))
+        if (pentry_trylock(pe))
                 return;
 
         if (-1 == pe->fd)

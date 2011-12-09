@@ -57,7 +57,7 @@ struct list *pentry_get_dirents(tpath_entry *);
 
 void pentry_unlink_cache_file(tpath_entry *);
 
-int tpath_entryrylock(tpath_entry *);
+int pentry_trylock(tpath_entry *);
 void pentry_lock(tpath_entry *);
 void pentry_unlock(tpath_entry *);
 int pentry_md_trylock(tpath_entry *);
@@ -70,7 +70,7 @@ int pentry_get_refcount(tpath_entry *);
 
 void pentry_set_path(tpath_entry *, const char *);
 
-char *tpath_entryype_to_str(filetype_t);
+char *pentry_type_to_str(filetype_t);
 
 /* return 0 on success, -1 on failure */
 int pentry_set_usermd(tpath_entry *, dpl_dict_t *);
