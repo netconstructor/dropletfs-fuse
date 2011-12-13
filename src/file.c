@@ -10,13 +10,14 @@
 #include "metadata.h"
 #include "zip.h"
 #include "timeout.h"
+#include "utils.h"
 
 #define WRITE_BLOCK_SIZE (1000*1000)
 
 extern struct conf *conf;
 extern dpl_ctx_t *ctx;
 
-static int
+int
 safe_close(int fd)
 {
         int ret;

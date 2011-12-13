@@ -80,7 +80,7 @@ void
 pentry_free(tpath_entry *pe)
 {
         if (-1 != pe->fd)
-                close(pe->fd);
+                safe_close(pe->fd);
 
         if (pe->usermd)
                 dpl_dict_free(pe->usermd);

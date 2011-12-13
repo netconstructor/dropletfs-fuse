@@ -11,6 +11,7 @@ struct get_data {
         int fd;
 };
 
+int safe_close(int fd);
 char *ftype_to_str(dpl_ftype_t);
 char *flags_to_str(int);
 int write_all(int, char *, int);
