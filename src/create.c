@@ -56,7 +56,10 @@ dfs_create(const char *path,
                 }
         }
 
-        (void)dfs_open(path, info);
+        if (-1 == dfs_open(path, info)) {
+                ret = -1;
+                goto err;
+        }
 
         pe = (tpath_entry *) info->fh;
         if (! pe) {
