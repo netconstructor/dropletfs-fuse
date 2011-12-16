@@ -74,22 +74,18 @@ dfs_create(const char *path,
                 goto err;
         }
 
-        if (-1 == fstat(pe->fd, &st)) {
-                LOG(LOG_ERR, "fstat: %s", strerror(errno));
+        if (-1 == fchmod(pe->fd, mode)) {
+                LOG(LOG_ERR, "fchmod(fd=%d): %s", pe->fd, strerror(errno));
                 ret = -errno;
                 goto err;
         }
 
-        fchmod(pe->fd, mode);
-
-        if (! pe->usermd) {
-                pe->usermd = dpl_dict_new(13);
-                if (! pe->usermd) {
-                        LOG(LOG_ERR, "allocation failure");
-                        ret = -1;
-                        goto err;
-                }
+        if (-1 == fstat(pe->fd, &st)) {
+                LOG(LOG_ERR, "fstat(fd=%d): %s", pe->fd, strerror(errno));
+                ret = -errno;
+                goto err;
         }
+
 
         fill_metadata_from_stat(usermd, &st);
         assign_meta_to_dict(usermd, "mode", (unsigned long) mode);
