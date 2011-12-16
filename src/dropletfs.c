@@ -50,6 +50,7 @@
 #include "profile.h"
 
 dpl_ctx_t *ctx = NULL;
+int ctx_freed = 0;
 FILE *fp = NULL;
 mode_t root_mode = 0;
 GHashTable *hash = NULL;
@@ -195,9 +196,19 @@ dfs_destroy(void *arg)
                 conf_free(conf);
         }
 
-        LOG(LOG_DEBUG, "freeing libdroplet context");
-	dpl_free();
+        conf = NULL;
 
+        if (ctx) {
+                dpl_ctx_free(ctx);
+                ctx = NULL;
+        }
+
+        LOG(LOG_DEBUG, "freeing libdroplet context");
+
+        if (! ctx_freed) {
+                dpl_free();
+                ctx_freed = 1;
+        }
 }
 
 static int
@@ -477,15 +488,23 @@ main(int argc,
         rc = dfs_fuse_main(&args);
 
         dpl_ctx_free(ctx);
+        ctx = NULL;
 
         if (hash)
                 g_hash_table_remove_all(hash);
 
   err3:
-        if (conf)
+        if (conf) {
                 conf_free(conf);
+                conf = NULL;
+        }
+
   err2:
-	dpl_free();
+        if (! ctx_freed) {
+                dpl_free();
+                ctx_freed = 1;
+        }
+
   err1:
 	return rc;
 }
