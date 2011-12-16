@@ -78,5 +78,7 @@ int pentry_set_usermd(tpath_entry *, dpl_dict_t *);
 /* return 0 on success, -1 on failure */
 int pentry_set_digest(tpath_entry *, const char *);
 
+tpath_entry *pentry_get_parent(tpath_entry *pe);
+
 
 #endif

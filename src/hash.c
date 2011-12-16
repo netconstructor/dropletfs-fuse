@@ -3,11 +3,13 @@
 #include <errno.h>
 #include <glib.h>
 
+#include "file.h"
 #include "log.h"
 #include "hash.h"
 #include "metadata.h"
 #include "tmpstr.h"
 #include "list.h"
+#include "utils.h"
 
 extern GHashTable *hash;
 extern struct conf *conf;
@@ -215,6 +217,43 @@ pentry_get_refcount(tpath_entry *pe)
         return ret;
 }
 
+tpath_entry *
+pentry_get_parent(tpath_entry *pe)
+{
+        tpath_entry *parent = NULL;
+        char *path = NULL;
+        char *p = NULL;
+        char *dirname = NULL;
+
+        /* sanity check */
+        if (! pe) {
+                LOG(LOG_ERR, "NULL entry, no parent");
+                goto end;
+        }
+
+        LOG(LOG_DEBUG, "path=%s", pe->path);
+
+        path = tmpstr_printf("%s", pe->path);
+
+        p = strrchr(path, '/');
+        if (! p) {
+                LOG(LOG_ERR, "malformed path: %s", pe->path);
+                goto end;
+        }
+
+        if (p == path)
+                dirname = "/";
+        else
+                *p = 0;
+
+        parent = g_hash_table_lookup(hash, dirname);
+
+  end:
+        LOG(LOG_DEBUG, "parent path=%s", parent ? parent->path : "null");
+
+        return parent;
+}
+
 void
 pentry_set_path(tpath_entry *pe,
                 const char *path)
@@ -332,13 +371,14 @@ pentry_set_usermd(tpath_entry *pe,
 
         pe->usermd = dpl_dict_new(13);
         if (! pe->usermd) {
-                LOG(LOG_ERR, "dpl_dict_new: can't allocate memory");
+                LOG(LOG_ERR, "path=%s: dpl_dict_new: can't allocate memory",
+                    pe->path);
                 ret = -1;
                 goto err;
         }
 
         if (DPL_FAILURE == dpl_dict_copy(pe->usermd, dict)) {
-                LOG(LOG_ERR, "dpl_dict_copy: failed");
+                LOG(LOG_ERR, "path=%s: dpl_dict_copy: failed", pe->path);
                 ret = -1;
                 goto err;
         }

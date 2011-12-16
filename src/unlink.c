@@ -21,9 +21,7 @@ dfs_unlink(const char *path)
         char *local = NULL;
         tpath_entry *pe = NULL;
         int ret;
-        char *p = NULL;
         tpath_entry *pe_dir = NULL;
-        char *dirname = NULL;
 
         LOG(LOG_DEBUG, "path=%s", path);
 
@@ -55,24 +53,9 @@ dfs_unlink(const char *path)
                 LOG(LOG_NOTICE, "%s: can't remove the cell from the hashtable",
                     path);
 
-        dirname = (char *)path;
-        p = strrchr(dirname, '/');
-        if (! p) {
-                LOG(LOG_ERR, "%s: no root dir", path);
-        } else {
-                if (p == path)
-                        dirname = "/";
-                else
-                        *p = 0;
-
-                pe_dir = g_hash_table_lookup(hash, dirname);
-
-                if (! *p)
-                        *p = '/';
-
-                if (pe_dir)
-                        (void)pentry_remove_dirent(pe_dir, path);
-        }
+        pe_dir = pentry_get_parent(pe);
+        if (pe_dir)
+                (void) pentry_remove_dirent(pe_dir, path);
 
         ret = 0;
   end:
