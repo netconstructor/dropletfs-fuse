@@ -205,7 +205,6 @@ dfs_open(const char *path,
         tpath_entry *pe = NULL;
         int ret = -1;
         enum state_mode smode;
-        dpl_dict_t *usermd;
 
         info->fh = 0;
         LOG(LOG_DEBUG, "path=%s %s 0%o",
