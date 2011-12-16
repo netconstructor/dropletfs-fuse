@@ -86,6 +86,15 @@ dfs_create(const char *path,
                 goto err;
         }
 
+        usermd = pe->usermd;
+        if (! usermd) {
+                usermd = dpl_dict_new(13);
+                if (! usermd) {
+                        LOG(LOG_ERR, "allocation failure");
+                        ret = -1;
+                        goto err;
+                }
+        }
 
         fill_metadata_from_stat(usermd, &st);
         assign_meta_to_dict(usermd, "mode", (unsigned long) mode);
