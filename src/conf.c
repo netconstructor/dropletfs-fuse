@@ -127,8 +127,20 @@ conf_free(struct conf *conf)
         if (conf->compression_method)
                 free(conf->compression_method);
 
+        if (conf->regex.str)
+                free(conf->regex.str);
+
+        if (conf->encryption_method)
+                free(conf->encryption_method);
+
         if (conf->cache_dir)
                 free(conf->cache_dir);
+
+        if (conf->root_dir)
+                free(conf->root_dir);
+
+        if (conf->profiling_logfile)
+                free(conf->profiling_logfile);
 
         free(conf);
 }
@@ -397,6 +409,10 @@ parse_token(struct conf * conf,
 
         ret = 0;
   err:
+
+        if (log)
+                free(log);
+
         return ret;
 }
 
