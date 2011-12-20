@@ -36,11 +36,6 @@ populate_hash(GHashTable *h,
         char *key = NULL;
         tpath_entry *pe = NULL;
 
-        if (! pep) {
-                ret = -1;
-                goto err;
-        }
-
         pe = pentry_new();
         if (! pe) {
                 ret = -1;
@@ -57,11 +52,14 @@ populate_hash(GHashTable *h,
                 goto err;
         }
 
-        *pep = pe;
         g_hash_table_insert(h, key, pe);
 
         ret = 0;
   err:
+
+        if (pep)
+          *pep = pe;
+
         return ret;
 }
 

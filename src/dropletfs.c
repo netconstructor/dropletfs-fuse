@@ -47,7 +47,6 @@
 #include "regex.h"
 #include "conf.h"
 #include "env.h"
-#include "profile.h"
 
 dpl_ctx_t *ctx = NULL;
 int ctx_freed = 0;
@@ -181,8 +180,6 @@ static void
 dfs_destroy(void *arg)
 {
         LOG(LOG_DEBUG, "%p", arg);
-
-        profile_fini();
 
         if (hash) {
                 LOG(LOG_DEBUG, "removing cache files");
@@ -383,7 +380,6 @@ droplet_pp(dpl_ctx_t *ctx)
         PP(n_conn_fds, "%d");
         PP(cur_bucket, "%s");
         PP(droplet_dir, "%s");
-        PP(profile_name, "%s");
 #undef PP
 }
 
@@ -414,8 +410,6 @@ conf_log(struct conf *conf)
         LOG(LOG_ERR, "debug level: %d (%s)",
             conf->log_level, log_level_to_str(conf->log_level));
         LOG(LOG_ERR, "exclusion regex: '%s'", conf->regex.str);
-        LOG(LOG_ERR, "profiling: %d", conf->profiling);
-        LOG(LOG_ERR, "profiling logfile: %s", conf->profiling_logfile);
 }
 
 int
@@ -481,7 +475,6 @@ main(int argc,
 
         conf_log(conf);
 
-        profile_init();
         g_thread_init(NULL);
 
         struct fuse_args args = FUSE_ARGS_INIT(argc, argv);

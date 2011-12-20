@@ -26,8 +26,6 @@
 #define DEFAULT_EXCLUSION_REGEXP NULL
 #define DEFAULT_CACHE_MAX_SIZE (10*1024*1024) /* 10MB */
 #define DEFAULT_ENCRYPTION_METHOD "NONE" /* "NONE" or "AES" */
-#define DEFAULT_PROFILING 0
-#define DEFAULT_PROFILING_LOGFILE "/tmp/dplfs_trace.log"
 
 #define COMPRESSION_METHOD "compression_method"
 #define COMPRESSION_METHOD_LEN strlen(COMPRESSION_METHOD)
@@ -53,10 +51,6 @@
 #define CACHE_MAX_SIZE_LEN strlen(CACHE_MAX_SIZE)
 #define ENCRYPTION_METHOD "encryption_method"
 #define ENCRYPTION_METHOD_LEN strlen(ENCRYPTION_METHOD)
-#define PROFILING "profiling"
-#define PROFILING_LEN strlen(PROFILING)
-#define PROFILING_LOGFILE "profiling_logfile"
-#define PROFILING_LOGFILE_LEN strlen(PROFILING_LOGFILE)
 
 extern dpl_ctx_t *ctx;
 
@@ -138,9 +132,6 @@ conf_free(struct conf *conf)
 
         if (conf->root_dir)
                 free(conf->root_dir);
-
-        if (conf->profiling_logfile)
-                free(conf->profiling_logfile);
 
         free(conf);
 }
@@ -393,20 +384,6 @@ parse_token(struct conf * conf,
                 }
         }
 
-        if (! strncasecmp(token, PROFILING, PROFILING_LEN)) {
-                if (-1 == parse_int(&conf->profiling, token)) {
-                        ret = -1;
-                        goto err;
-                }
-        }
-
-        if (! strncasecmp(token, PROFILING_LOGFILE, PROFILING_LOGFILE_LEN)) {
-                if (-1 == parse_str(&conf->profiling_logfile, token)) {
-                        ret = -1;
-                        goto err;
-                }
-        }
-
         ret = 0;
   err:
 
@@ -524,8 +501,6 @@ conf_ctor_default(struct conf *conf,
         conf->max_retry = DEFAULT_MAX_RETRY;
         conf->log_level = DEFAULT_LOG_LEVEL;
         conf->cache_max_size = DEFAULT_CACHE_MAX_SIZE;
-        conf->profiling = DEFAULT_PROFILING;
-        conf->profiling_logfile = DEFAULT_PROFILING_LOGFILE;
         re_ctor(&conf->regex, NULL, REG_EXTENDED);
 
         ret = 0;
