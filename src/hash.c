@@ -402,7 +402,7 @@ pentry_set_digest(tpath_entry *pe,
 }
 
 char *
-pentry_type_to_str(filetype_t type)
+pentry_type_to_str(tpath_type type)
 {
         switch (type) {
         case FILE_REG: return "regular file";
@@ -426,4 +426,42 @@ void
 hash_print_all(void)
 {
         g_hash_table_foreach(hash, print, NULL);
+}
+
+int
+populate_hash(GHashTable *h,
+              const char * const path,
+              tpath_type type,
+              tpath_entry **pep)
+{
+        int ret;
+        char *key = NULL;
+        tpath_entry *pe = NULL;
+
+        pe = pentry_new();
+        if (! pe) {
+                ret = -1;
+                goto err;
+        }
+
+        pe->fd = -1;
+        pe->filetype = type;
+        pentry_set_path(pe, path);
+        key = strdup(path);
+        if (! key) {
+                LOG(LOG_CRIT, "strdup(%s): %s", path, strerror(errno));
+                pentry_free(pe);
+                ret = -1;
+                goto err;
+        }
+
+        g_hash_table_insert(h, key, pe);
+
+        ret = 0;
+  err:
+
+        if (pep)
+          *pep = pe;
+
+        return ret;
 }

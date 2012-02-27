@@ -1,6 +1,7 @@
 #ifndef DROPLET_HASH_H
 #define DROPLET_HASH_H
 
+#include <glib.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -17,7 +18,7 @@ typedef enum {
         FILE_REG=0,
         FILE_DIR,
         FILE_SYMLINK,
-} filetype_t;
+} tpath_type;
 
 enum {
         FILE_LOCAL=0,
@@ -37,7 +38,7 @@ typedef struct {
         sem_t refcount;
         int flag;
         int exclude;
-        filetype_t filetype;
+        tpath_type filetype;
         struct list *dirent;
         int ondisk;
         time_t atime, mtime, ctime;
@@ -70,7 +71,7 @@ int pentry_get_refcount(tpath_entry *);
 
 void pentry_set_path(tpath_entry *, const char *);
 
-char *pentry_type_to_str(filetype_t);
+char *pentry_type_to_str(tpath_type);
 
 /* return 0 on success, -1 on failure */
 int pentry_set_usermd(tpath_entry *, dpl_dict_t *);
@@ -80,5 +81,9 @@ int pentry_set_digest(tpath_entry *, const char *);
 
 tpath_entry *pentry_get_parent(tpath_entry *pe);
 
+int populate_hash(GHashTable *h,
+                  const char * const path,
+                  tpath_type type,
+                  tpath_entry **pep);
 
 #endif

@@ -28,27 +28,6 @@ dfs_opendir(const char *path,
                 goto err;
         }
 
-        pe = g_hash_table_lookup(hash, path);
-        if (! pe) {
-                pe = pentry_new();
-                if (! pe) {
-                        LOG(LOG_ERR, "can't create a new hashtable cell");
-                        ret = -1;
-                        goto err;
-                }
-                pentry_set_path(pe, path);
-                pe->filetype =FILE_DIR;
-                key = strdup(path);
-                if (! key) {
-                        LOG(LOG_ERR, "%s: strdup: %s", path, strerror(errno));
-                        pentry_free(pe);
-                        ret = -1;
-                        goto err;
-                }
-                g_hash_table_insert(hash, key, pe);
-                LOG(LOG_DEBUG, "added a new dir entry in hashtable: %s", path);
-        }
-
         ret = 0;
   err:
 

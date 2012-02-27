@@ -118,7 +118,7 @@ static int
 dfs_releasedir(const char *path,
                struct fuse_file_info *info)
 {
-        (void)info;
+        (void) info;
 
         LOG(LOG_DEBUG, "%s", path);
         return 0;

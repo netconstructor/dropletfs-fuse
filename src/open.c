@@ -27,42 +27,6 @@ static int open_flags[] = {
         [MODE_CREAT]  = O_RDWR|O_CREAT|O_TRUNC,
 };
 
-static int
-populate_hash(GHashTable *h,
-              const char * const path,
-              tpath_entry **pep)
-{
-        int ret;
-        char *key = NULL;
-        tpath_entry *pe = NULL;
-
-        pe = pentry_new();
-        if (! pe) {
-                ret = -1;
-                goto err;
-        }
-
-        pe->fd = -1;
-        pentry_set_path(pe, path);
-        key = strdup(path);
-        if (! key) {
-                LOG(LOG_CRIT, "strdup(%s): %s", path, strerror(errno));
-                pentry_free(pe);
-                ret = -1;
-                goto err;
-        }
-
-        g_hash_table_insert(h, key, pe);
-
-        ret = 0;
-  err:
-
-        if (pep)
-          *pep = pe;
-
-        return ret;
-}
-
 static char *
 build_cache_tree(const char *path)
 {
@@ -211,7 +175,7 @@ dfs_open(const char *path,
         pe = g_hash_table_lookup(hash, path);
         if (! pe) {
                 LOG(LOG_INFO, "'%s': entry not found in hashtable", path);
-                if (-1 == populate_hash(hash, path, &pe)) {
+                if (-1 == populate_hash(hash, path, FILE_REG, &pe)) {
                         ret = -1;
                         goto err;
                 }
