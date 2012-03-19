@@ -20,18 +20,10 @@ dfs_readdir(const char *path,
         void *dir_hdl;
         dpl_dirent_t dirent;
         dpl_status_t rc = DPL_FAILURE;
-        tpath_entry *pe = NULL;
         int ret;
 
         LOG(LOG_DEBUG, "path=%s, data=%p, fill=%p, offset=%lld, info=%p",
             path, data, (void *)fill, (long long)offset, (void *)info);
-
-        pe = g_hash_table_lookup(hash, path);
-        if (! pe) {
-                LOG(LOG_ERR, "%s: can't find any entry in hashtable", path);
-                ret = -1;
-                goto err;
-        }
 
         rc = dfs_chdir_timeout(ctx, path);
         if (DPL_SUCCESS != rc) {
